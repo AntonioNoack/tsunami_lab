@@ -1,0 +1,1 @@
+./build/tsunami_lab
