@@ -19,6 +19,9 @@ Doxygen: has issues with included .h-files: thinks that their description & lice
 
 Sphinx expects "index.rst", while Github expects "README.rst"/"README.md". Combine them elegantly somehow?
 
+Sphinx seems to not be installed on the server (sphinx-quickstart: command not found, sphinx-build: command not found).
+
+The task description suggests to assume the gravity constant as 9.81m/s², while the sample code including samples with ~9.80665m/s², so I had to add a little inaccuracy to WavePropagation1d.test.cpp to make the test match both approximations. It shouldn't break anything.
 
 Worked fine
 -----------

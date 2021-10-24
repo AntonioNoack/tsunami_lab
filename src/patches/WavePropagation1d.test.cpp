@@ -69,11 +69,12 @@ TEST_CASE( "Test the 1d wave propagation solver.", "[WaveProp1d]" ) {
   }
 
   // dam-break
-  REQUIRE( m_waveProp.getHeight()[49]   == Approx(10 - 0.1 * 9.394671362) );
-  REQUIRE( m_waveProp.getMomentumX()[49] == Approx( 0 + 0.1 * 88.25985) );
+  // margin added for support of different gravity constants (9.81 vs ~9.8066)
+  REQUIRE( m_waveProp.getHeight()[49]   == Approx(10 - 0.1 * 9.394671362).margin(0.001) );
+  REQUIRE( m_waveProp.getMomentumX()[49] == Approx( 0 + 0.1 * 88.25985).margin(0.01) );
 
-  REQUIRE( m_waveProp.getHeight()[50]   == Approx(8 + 0.1 * 9.394671362) );
-  REQUIRE( m_waveProp.getMomentumX()[50] == Approx(0 + 0.1 * 88.25985) );
+  REQUIRE( m_waveProp.getHeight()[50]   == Approx(8 + 0.1 * 9.394671362).margin(0.001) );
+  REQUIRE( m_waveProp.getMomentumX()[50] == Approx(0 + 0.1 * 88.25985).margin(0.01) );
 
   // steady state
   for( std::size_t l_ce = 51; l_ce < 100; l_ce++ ) {
