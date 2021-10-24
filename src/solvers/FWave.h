@@ -1,8 +1,4 @@
-/**
- * @author Antonio Noack
- * @section DESCRIPTION
- * F-Wave solver for the one-dimensional shallow water equations.
- **/
+
 #ifndef TSUNAMI_LAB_SOLVERS_FWAVE
 #define TSUNAMI_LAB_SOLVERS_FWAVE
 
@@ -14,6 +10,11 @@ namespace tsunami_lab {
   }
 }
 
+/**
+ * @author Antonio Noack
+ * @section DESCRIPTION
+ * F-Wave solver for the one-dimensional shallow water equations.
+ **/
 class tsunami_lab::solvers::FWave {
   private:
     //! gravity, in m/s²
