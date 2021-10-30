@@ -1,5 +1,5 @@
 /**
- * @author Alexander Breuer (alex.breuer AT uni-jena.de)
+ * @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
  * 
  * @section LICENSE
  * Copyright 2020, Friedrich Schiller University Jena
@@ -19,6 +19,7 @@
 #define TSUNAMI_LAB_PATCHES_WAVE_PROPAGATION_1D
 
 #include "WavePropagation.h"
+#include "../setups/Setup.h"
 
 namespace tsunami_lab {
   namespace patches {
@@ -39,6 +40,8 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
 
     //! momenta for the current and next time step for all cells
     t_real * m_hu[2] = { nullptr, nullptr };
+  
+    bool m_useFWaveSolver = true;
 
   public:
     /**
@@ -47,6 +50,15 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
      * @param i_nCells number of cells.
      **/
     WavePropagation1d( t_idx i_nCells );
+	
+    /**
+     * Constructs the 1d wave propagation solver.
+     *
+     * @param i_nCells number of cells.
+	 * @param i_setup setup for cell initialization.
+	 * @param i_scale scale for the scene; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
+     **/
+    WavePropagation1d( t_idx i_nCells, tsunami_lab::setups::Setup* i_setup, t_real i_scale );
 
     /**
      * Destructor which frees all allocated memory.

@@ -116,19 +116,19 @@ TEST_CASE( "Test breaking dam.", "[FWave-netUpdate-breakingDam]" ) {
   REQUIRE( l_deltaRight[0] == Approx(l_deltaRight2[0]) );
   REQUIRE( l_deltaRight[1] == Approx(l_deltaRight2[1]) );*/
   
-  
-  REQUIRE( l_deltaLeft[0]  == Approx(+30.017855) );
-  REQUIRE( l_deltaLeft[1]  == Approx(-180.21432) );
-  REQUIRE( l_deltaRight[0] == Approx(-40.017855) );
-  REQUIRE( l_deltaRight[1] == Approx(-320.28574) );
+  // epsilons, because the gravity constant may be 9.81 or 9.80665
+  REQUIRE( l_deltaLeft[0]  == Approx(+30.017855).epsilon(0.001) );
+  REQUIRE( l_deltaLeft[1]  == Approx(-180.21432).epsilon(0.001) );
+  REQUIRE( l_deltaRight[0] == Approx(-40.017855).epsilon(0.001) );
+  REQUIRE( l_deltaRight[1] == Approx(-320.28574).epsilon(0.001) );
   
   // switching left and right should produce the same results, except for the signs
   tsunami_lab::solvers::FWave::netUpdates(l_hR, l_hL, 0.0, l_huL, l_deltaLeft, l_deltaRight);
   
-  REQUIRE( l_deltaLeft[0]  == Approx(-30.017855) );
-  REQUIRE( l_deltaLeft[1]  == Approx(+180.21432) );
-  REQUIRE( l_deltaRight[0] == Approx(+40.017855) );
-  REQUIRE( l_deltaRight[1] == Approx(+320.28574) );
+  REQUIRE( l_deltaLeft[0]  == Approx(-30.017855).epsilon(0.001) );
+  REQUIRE( l_deltaLeft[1]  == Approx(+180.21432).epsilon(0.001) );
+  REQUIRE( l_deltaRight[0] == Approx(+40.017855).epsilon(0.001) );
+  REQUIRE( l_deltaRight[1] == Approx(+320.28574).epsilon(0.001) );
   
 }
 
@@ -179,17 +179,17 @@ TEST_CASE( "Test crashing waves.", "[FWave-netUpdate-crashingWaves]" ) {
   
   
   REQUIRE( l_deltaLeft[0]  == Approx(-10) );
-  REQUIRE( l_deltaLeft[1]  == Approx(+99.045684) );
+  REQUIRE( l_deltaLeft[1]  == Approx(+99.045684).epsilon(0.001) );
   REQUIRE( l_deltaRight[0] == Approx(-10) );
-  REQUIRE( l_deltaRight[1] == Approx(-99.045684) );
+  REQUIRE( l_deltaRight[1] == Approx(-99.045684).epsilon(0.001) );
   
   // switching left and right should produce the same results, except for the signs
   tsunami_lab::solvers::FWave::netUpdates(l_hR, l_hL, l_huR, l_huL, l_deltaLeft, l_deltaRight);
   
   REQUIRE( l_deltaLeft[0]  == Approx(+10) );
-  REQUIRE( l_deltaLeft[1]  == Approx(-99.045684) );
+  REQUIRE( l_deltaLeft[1]  == Approx(-99.045684).epsilon(0.001) );
   REQUIRE( l_deltaRight[0] == Approx(+10) );
-  REQUIRE( l_deltaRight[1] == Approx(+99.045684) );
+  REQUIRE( l_deltaRight[1] == Approx(+99.045684).epsilon(0.001) );
   
 }
 

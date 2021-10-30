@@ -1,5 +1,5 @@
 /**
- * @author Alexander Breuer (alex.breuer AT uni-jena.de)
+ * @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
  * 
  * @section LICENSE
  * Copyright 2020, Friedrich Schiller University Jena
@@ -16,7 +16,9 @@
  * One-dimensional wave propagation patch.
  **/
 #include "WavePropagation1d.h"
+#include "../setups/Setup.h"
 #include "../solvers/FWave.h"
+#include "../solvers/Roe.h"
 
 tsunami_lab::patches::WavePropagation1d::WavePropagation1d( t_idx i_nCells ) {
   m_nCells = i_nCells;
@@ -32,6 +34,25 @@ tsunami_lab::patches::WavePropagation1d::WavePropagation1d( t_idx i_nCells ) {
     for( t_idx l_ce = 0; l_ce < m_nCells; l_ce++ ) {
       m_h[l_st][l_ce] = 0;
       m_hu[l_st][l_ce] = 0;
+    }
+  }
+}
+
+tsunami_lab::patches::WavePropagation1d::WavePropagation1d( t_idx i_nCells, tsunami_lab::setups::Setup* i_setup, t_real i_scale ) {
+  m_nCells = i_nCells;
+
+  // allocate memory including a single ghost cell on each side
+  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
+    m_h[l_st] = new t_real[  m_nCells + 2 ];
+    m_hu[l_st] = new t_real[ m_nCells + 2 ];
+  }
+
+  // init with setup
+  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
+    for( t_idx l_ce = 0; l_ce < m_nCells; l_ce++ ) {
+      t_real l_x = (l_ce - 1) * i_scale;
+      m_h[l_st][l_ce] = i_setup->getHeight(l_x, 0);
+      m_hu[l_st][l_ce] = i_setup->getMomentumX(l_x, 0);
     }
   }
 }
@@ -57,6 +78,8 @@ void tsunami_lab::patches::WavePropagation1d::timeStep( t_real i_scaling ) {
     l_hNew[l_ce] = l_hOld[l_ce];
     l_huNew[l_ce] = l_huOld[l_ce];
   }
+  
+  const bool l_useFWaveSolver = m_useFWaveSolver;
 
   // iterate over edges and update with Riemann solutions
   for( t_idx l_ed = 0; l_ed < m_nCells+1; l_ed++ ) {
@@ -67,12 +90,15 @@ void tsunami_lab::patches::WavePropagation1d::timeStep( t_real i_scaling ) {
     // compute net-updates
     t_real l_netUpdates[2][2];
 
-    solvers::FWave::netUpdates( l_hOld[l_ceL],
-                              l_hOld[l_ceR],
-                              l_huOld[l_ceL],
-                              l_huOld[l_ceR],
-                              l_netUpdates[0],
-                              l_netUpdates[1] );
+    if(l_useFWaveSolver){
+		solvers::FWave::netUpdates( l_hOld[l_ceL], l_hOld[l_ceR],
+                                    l_huOld[l_ceL], l_huOld[l_ceR],
+                                    l_netUpdates[0], l_netUpdates[1] );
+	} else {
+		solvers::Roe::netUpdates( l_hOld[l_ceL], l_hOld[l_ceR],
+                                  l_huOld[l_ceL], l_huOld[l_ceR],
+                                  l_netUpdates[0], l_netUpdates[1] );
+	}
 
     // update the cells' quantities
     l_hNew[l_ceL]  -= i_scaling * l_netUpdates[0][0];

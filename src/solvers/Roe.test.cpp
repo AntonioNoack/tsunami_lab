@@ -18,7 +18,10 @@
 #include <catch2/catch.hpp>
 #define private public
 #include "Roe.h"
+#include "../constants.h"
 #undef public
+
+#define t_real tsunami_lab::t_real
 
 TEST_CASE( "Test the derivation of the Roe speeds.", "[RoeSpeeds]" ) {
    /*
@@ -32,8 +35,8 @@ TEST_CASE( "Test the derivation of the Roe speeds.", "[RoeSpeeds]" ) {
     * roe speeds: s1 = -0.079002116969172024 - sqrt(9.80665 * 9.5) = -9.7311093998375095
     *             s2 = -0.079002116969172024 + sqrt(9.80665 * 9.5) =  9.5731051658991654
     */
-  float l_waveSpeedL = 0;
-  float l_waveSpeedR = 0;
+  t_real l_waveSpeedL = 0;
+  t_real l_waveSpeedR = 0;
   tsunami_lab::solvers::Roe::waveSpeeds( 10,
                                          9,
                                          -3,
@@ -77,8 +80,8 @@ TEST_CASE( "Test the derivation of the Roe wave speeds.", "[RoeStrengths]" ) {
    * Rinv * |          | = |                     |
    *        | 27 - -30 |   |  2.4486306054668869 |
    */
-  float l_strengthL = 0;
-  float l_strengthR = 0;
+  t_real l_strengthL = 0;
+  t_real l_strengthR = 0;
 
   tsunami_lab::solvers::Roe::waveStrengths( 10,
                                             9,
@@ -114,8 +117,8 @@ TEST_CASE( "Test the derivation of the Roe net-updates.", "[RoeUpdates]" ) {
    * update #2: s2 * a2 * |    | = |                           |
    *                      | s2 |   | 224.403141905910928927533 |
    */
-  float l_netUpdatesL[2] = { -5, 3 };
-  float l_netUpdatesR[2] = {  4, 7 };
+  t_real l_netUpdatesL[2] = { -5, 3 };
+  t_real l_netUpdatesR[2] = {  4, 7 };
 
   tsunami_lab::solvers::Roe::netUpdates( 10,
                                          9,
