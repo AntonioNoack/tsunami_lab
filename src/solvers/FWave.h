@@ -17,9 +17,6 @@ namespace tsunami_lab {
  **/
 class tsunami_lab::solvers::FWave {
   private:
-    //! gravity, in m/s²
-    static t_real constexpr m_gravity = 9.81; // 3.131557121*3.131557121;
-
     /**
      * Inverses a 2x2 matrix.
      *
@@ -51,6 +48,11 @@ class tsunami_lab::solvers::FWave {
                               t_real o_vector[2] );
 
   public:
+  
+    //! gravity, in m/s²
+	// all tests seem to depend on this constant, so I switch from 9.81 to 9.80665; 3.131557121*3.131557121;
+    static t_real constexpr m_gravity = 9.80665;
+	
     /**
      * Computes the net-updates.
      *

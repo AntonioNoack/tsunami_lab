@@ -1,5 +1,5 @@
 ##
-# @author Alexander Breuer (alex.breuer AT uni-jena.de)
+# @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
 # 
 # @section LICENSE
 # Copyright 2020, Friedrich Schiller University Jena
@@ -22,6 +22,7 @@ l_sources = [ 'solvers/Roe.cpp',
               'solvers/FWave.cpp',
               'patches/WavePropagation1d.cpp',
               'setups/DamBreak1d.cpp',
+              'setups/Discontinuity1d.cpp',
               'io/Csv.cpp' ]
 
 for l_so in l_sources:
@@ -35,7 +36,8 @@ l_tests = [ 'tests.cpp',
             'solvers/FWave.test.cpp',
             'patches/WavePropagation1d.test.cpp',
             'io/Csv.test.cpp',
-            'setups/DamBreak1d.test.cpp' ]
+            'setups/DamBreak1d.test.cpp',
+            'setups/Discontinuity1d.test.cpp' ]
 
 for l_te in l_tests:
   env.tests.append( env.Object( l_te ) )

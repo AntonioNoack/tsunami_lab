@@ -1,5 +1,5 @@
 /**
- * @author Alexander Breuer (alex.breuer AT uni-jena.de)
+ * @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
  * 
  * @section LICENSE
  * Copyright 2020, Friedrich Schiller University Jena
@@ -19,6 +19,7 @@
 #define TSUNAMI_LAB_PATCHES_WAVE_PROPAGATION_1D
 
 #include "WavePropagation.h"
+#include "../setups/Setup.h"
 
 namespace tsunami_lab {
   namespace patches {
@@ -39,6 +40,8 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
 
     //! momenta for the current and next time step for all cells
     t_real * m_hu[2] = { nullptr, nullptr };
+  
+    bool m_useFWaveSolver = true;
 
   public:
     /**
@@ -47,11 +50,38 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
      * @param i_nCells number of cells.
      **/
     WavePropagation1d( t_idx i_nCells );
+	
+    /**
+     * Constructs the 1d wave propagation solver and applies the setup.
+     *
+     * @param i_nCells number of cells.
+	 * @param i_setup setup for cell initialization.
+	 * @param i_scale scale for the scene; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
+     **/
+    WavePropagation1d( t_idx i_nCells, tsunami_lab::setups::Setup* i_setup, t_real i_scale );
 
     /**
      * Destructor which frees all allocated memory.
      **/
     ~WavePropagation1d();
+	
+    /**
+     * Initializes the internal state with a setup.
+     *
+	 * @param i_setup setup for cell initialization.
+	 * @param i_scale scale for the scene; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
+     **/
+    void initWithSetup( tsunami_lab::setups::Setup* i_setup, t_real i_scale );
+	
+	/**
+	 * Computes the maximum time step that is allowed without breaking the CFL condition.
+	 **/
+	t_real computeMaxTimestep();
+	
+	/**
+	 * Computes the maximum time step that is allowed without breaking the CFL condition within a certain radius from the center.
+	 **/
+	t_real computeMaxTimestep( t_idx i_updateRadius  );
 
     /**
      * Performs a time step.
@@ -59,6 +89,14 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
      * @param i_scaling scaling of the time step (dt / dx).
      **/
     void timeStep( t_real i_scaling );
+
+    /**
+     * Performs a time step on the inner region.
+     *
+     * @param i_scaling scaling of the time step (dt / dx).
+	 * @param i_size radius of what is actually updated.
+     **/
+    void timeStep( t_real i_scaling, t_idx i_updateRadius );
 
     /**
      * Sets the values of the ghost cells according to outflow boundary conditions.
