@@ -16,7 +16,7 @@ namespace tsunami_lab {
  * F-Wave solver for the one-dimensional shallow water equations.
  **/
 class tsunami_lab::solvers::FWave {
-  private:
+	
     /**
      * Inverses a 2x2 matrix.
      *

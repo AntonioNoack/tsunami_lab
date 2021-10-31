@@ -157,6 +157,7 @@ TEST_CASE( "Tests from sample file.", "[Discontinuity1d-sample-file]" ) {
 		  t_idx l_simulationRadius = l_i + 1;
 		  
 		  t_real l_timeStep = l_simulation.computeMaxTimestep(l_simulationRadius);
+		  
 		  // in these tests, updating the ghost zone is only needed in the first step theoretically
 		  // the border also only matters, if all 500 steps are used: only then can the initial wave travel from the center to the border (250 steps),
 		  // and cause a calculation error there, and then return with 250 to the center.
@@ -178,7 +179,7 @@ TEST_CASE( "Tests from sample file.", "[Discontinuity1d-sample-file]" ) {
 		else l_passedTests++;
 		
 		// if(l_totalTests % 25000 == 0) std::cout << "[" << l_totalTests << "] [" << l_i << "]" << std::endl;
-		
+
 	  }
 	}
   }
@@ -187,5 +188,4 @@ TEST_CASE( "Tests from sample file.", "[Discontinuity1d-sample-file]" ) {
   REQUIRE(l_passedTests >= 0.99 * l_totalTests);
   
   l_dataFile.close();
-  
 }
