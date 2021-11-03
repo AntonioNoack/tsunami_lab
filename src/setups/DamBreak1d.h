@@ -62,6 +62,14 @@ class tsunami_lab::setups::DamBreak1d: public Setup {
                       t_real      ) const;
 
     /**
+     * Gets the water depth at a given point.
+     * Positive values mean below sea level, negative values mean above sea level.
+     *
+     * @return water depth at the given point.
+     **/
+    t_real getBathymetry( t_real, t_real ) const;
+
+    /**
      * Gets the momentum in x-direction.
      *
      * @return momentum in x-direction.

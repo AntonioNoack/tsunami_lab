@@ -31,18 +31,22 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
   private:
     //! current step which indicates the active values in the arrays below
     unsigned short m_step = 0;
-
+    
     //! number of cells discretizing the computational domain
     t_idx m_nCells = 0;
-
+    
     //! water heights for the current and next time step for all cells
     t_real * m_h[2] = { nullptr, nullptr };
-
+    
     //! momenta for the current and next time step for all cells
     t_real * m_hu[2] = { nullptr, nullptr };
-  
+    
+    //! bathymetry in meters for all cells
+    t_real * m_bathymetry = nullptr;
+    
+    //! if true, use FWave, else use Roe solver
     bool m_useFWaveSolver = true;
-
+    
   public:
     /**
      * Constructs the 1d wave propagation solver.
@@ -50,13 +54,13 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
      * @param i_nCells number of cells.
      **/
     WavePropagation1d( t_idx i_nCells );
-	
+    
     /**
      * Constructs the 1d wave propagation solver and applies the setup.
      *
      * @param i_nCells number of cells.
-	 * @param i_setup setup for cell initialization.
-	 * @param i_scale scale for the scene; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
+     * @param i_setup setup for cell initialization.
+     * @param i_scale scale for the scene; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
      **/
     WavePropagation1d( t_idx i_nCells, tsunami_lab::setups::Setup* i_setup, t_real i_scale );
 
@@ -64,45 +68,45 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
      * Destructor which frees all allocated memory.
      **/
     ~WavePropagation1d();
-	
+    
     /**
      * Initializes the internal state with a setup.
      *
-	 * @param i_setup setup for cell initialization.
-	 * @param i_scale scale for the scene; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
+     * @param i_setup setup for cell initialization.
+     * @param i_scale scale for the scene; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
      **/
     void initWithSetup( tsunami_lab::setups::Setup* i_setup, t_real i_scale );
-	
-	/**
-	 * Computes the maximum time step that is allowed without breaking the CFL condition.
-	 **/
-	t_real computeMaxTimestep();
-	
-	/**
-	 * Computes the maximum time step that is allowed without breaking the CFL condition within a certain radius from the center.
-	 **/
-	t_real computeMaxTimestep( t_idx i_updateRadius  );
-
+    
+    /**
+     * Computes the maximum time step that is allowed without breaking the CFL condition.
+     **/
+    t_real computeMaxTimestep( t_real i_cellSizeMeters );
+    
+    /**
+     * Computes the maximum time step that is allowed without breaking the CFL condition within a certain radius from the center.
+     **/
+    t_real computeMaxTimestep( t_real i_cellSizeMeters, t_idx i_updateRadius );
+    
     /**
      * Performs a time step.
      *
      * @param i_scaling scaling of the time step (dt / dx).
      **/
     void timeStep( t_real i_scaling );
-
+    
     /**
      * Performs a time step on the inner region.
      *
      * @param i_scaling scaling of the time step (dt / dx).
-	 * @param i_size radius of what is actually updated.
+     * @param i_size radius of what is actually updated.
      **/
     void timeStep( t_real i_scaling, t_idx i_updateRadius );
-
+    
     /**
      * Sets the values of the ghost cells according to outflow boundary conditions.
      **/
     void setGhostOutflow();
-
+    
     /**
      * Gets the stride in y-direction. x-direction is stride-1.
      *
@@ -111,7 +115,7 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
     t_idx getStride(){
       return m_nCells+2;
     }
-
+    
     /**
      * Gets cells' water heights.
      *
@@ -120,7 +124,7 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
     t_real const * getHeight(){
       return m_h[m_step]+1;
     }
-
+    
     /**
      * Gets the cells' momenta in x-direction.
      *
@@ -129,14 +133,14 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
     t_real const * getMomentumX(){
       return m_hu[m_step]+1;
     }
-
+    
     /**
      * Dummy function which returns a nullptr.
      **/
     t_real const * getMomentumY(){
       return nullptr;
     }
-
+    
     /**
      * Sets the height of the cell to the given value.
      *
@@ -148,7 +152,7 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
                     t_real i_h ) {
       m_h[m_step][i_ix+1] = i_h;
     }
-
+    
     /**
      * Sets the momentum in x-direction to the given value.
      *
@@ -160,7 +164,7 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
                        t_real i_hu ) {
       m_hu[m_step][i_ix+1] = i_hu;
     }
-
+    
     /**
      * Dummy function since there is no y-momentum in the 1d solver.
      **/

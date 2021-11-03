@@ -25,22 +25,27 @@
 #include <fstream>
 #include <limits>
 
+#define t_real tsunami_lab::t_real
+#define t_idx  tsunami_lab::t_idx
+
 int main( int   i_argc,
           char *i_argv[] ) {
-			  
+              
   // this sample once expected a size, and then implemented the dam problem
   // instead, I'll change it to use my Discontinuity1d setup to test the shock-shock and rare-rare problems.
   
   // arguments: <number of cells> <left height> <right height> <left impulse> <right impulse>
   
   // number of cells in x- and y-direction
-  tsunami_lab::t_idx l_nx = 0;
-  tsunami_lab::t_idx l_ny = 1;
-  tsunami_lab::t_real l_heightLeft = 10;
-  tsunami_lab::t_real l_heightRight = 5;
-  tsunami_lab::t_real l_impulseLeft = 0;
-  tsunami_lab::t_real l_impulseRight = 0;
-  tsunami_lab::t_real l_cellSizeMeters = 1;
+  t_idx  l_nx = 0;
+  t_idx  l_ny = 1;
+  t_real l_heightLeft = 10;
+  t_real l_heightRight = 5;
+  t_real l_impulseLeft = 0;
+  t_real l_impulseRight = 0;
+  t_real l_cellSizeMeters = 1;
+  t_real l_numTimesteps = 1000;
+  t_real l_numOutputSteps = 100;
 
   std::cout << "####################################" << std::endl;
   std::cout << "### Tsunami Lab                  ###" << std::endl;
@@ -52,7 +57,7 @@ int main( int   i_argc,
     std::cerr << "invalid number of arguments, usage:" << std::endl;
     std::cerr << "  ./build/tsunami_lab N_CELLS_X HEIGHT_LEFT HEIGHT_RIGHT IMPULSE_LEFT IMPULSE_RIGHT" << std::endl;
     std::cerr << "    where" << std::endl;
-	std::cerr << "      N_CELLS_X is the number of cells in x-direction," << std::endl;
+    std::cerr << "      N_CELLS_X is the number of cells in x-direction," << std::endl;
     std::cerr << "      HEIGHT_LEFT is the height of the water on the left half, default = 10," << std::endl;
     std::cerr << "      HEIGHT_RIGHT is the height of the water on the right half, default = 5," << std::endl;
     std::cerr << "      IMPULSE_LEFT is the impulse on the left side, default = 0," << std::endl;
@@ -64,10 +69,10 @@ int main( int   i_argc,
       std::cerr << "invalid number of cells" << std::endl;
       return EXIT_FAILURE;
     }
-	if(i_argc > 2) l_heightLeft   = atof(i_argv[2]);
-	if(i_argc > 3) l_heightRight  = atof(i_argv[3]);
-	if(i_argc > 4) l_impulseLeft  = atof(i_argv[4]);
-	if(i_argc > 5) l_impulseRight = atof(i_argv[5]);
+    if(i_argc > 2) l_heightLeft   = atof(i_argv[2]);
+    if(i_argc > 3) l_heightRight  = atof(i_argv[3]);
+    if(i_argc > 4) l_impulseLeft  = atof(i_argv[4]);
+    if(i_argc > 5) l_impulseRight = atof(i_argv[5]);
   }
   
   std::cout << "runtime configuration" << std::endl;
@@ -81,20 +86,26 @@ int main( int   i_argc,
   tsunami_lab::patches::WavePropagation1d *l_waveProp;
   l_waveProp = new tsunami_lab::patches::WavePropagation1d( l_nx, l_setup, 1.0 );
 
-  // set up time and print control
-  tsunami_lab::t_idx  l_timeStep = 0;
-  tsunami_lab::t_idx  l_nOut = 0;
-  tsunami_lab::t_real l_maxTimesteps = l_nx;
-  tsunami_lab::t_real l_simTime = 0;
+  // set up print control
+  t_idx  l_nOut = 0;
+  t_real l_timestep;
+  
+  // currently, this is often a pretty good amount of timesteps
+  // it may be changed in the future
+  t_real l_simTime = 0;
 
   std::cout << "entering time loop" << std::endl;
 
-  tsunami_lab::t_real l_maxTimestep = 0;
   // iterate over time
-  while( l_timeStep < l_maxTimesteps ){
-    if( l_timeStep % 25 == 0 ) {
-      std::cout << "  simulation time / #time steps: "
-                << l_simTime << " / " << l_timeStep << std::endl;
+  t_idx l_lastOutputIndex = -1;// -1 to always print the inital state, 0 to skip it
+  for(t_idx l_timeStepIndex=0; l_timeStepIndex < l_numTimesteps; l_timeStepIndex++ ){
+    // index, which frame we'd need to print theoretically
+    // if there are more frames requested than simulated, we just skip some
+    t_idx l_outputIndex = l_timeStepIndex * l_numOutputSteps / l_numTimesteps;
+    if(l_lastOutputIndex != l_outputIndex) {
+      l_lastOutputIndex = l_outputIndex;
+      
+      std::cout << "  simulation time: " << l_simTime << ", #time steps: "<< l_timeStepIndex << std::endl;
 
       std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
       std::cout << "  writing wave field to " << l_path << std::endl;
@@ -107,12 +118,13 @@ int main( int   i_argc,
       l_nOut++;
     }
 
-    l_maxTimestep = l_waveProp->computeMaxTimestep();
+    l_timestep = l_waveProp->computeMaxTimestep(l_cellSizeMeters);
     l_waveProp->setGhostOutflow();
-    l_waveProp->timeStep(l_maxTimestep);
+    
+    t_real l_scaling = l_timestep / l_cellSizeMeters;
+    l_waveProp->timeStep(l_scaling);
 
-    l_timeStep++;
-    l_simTime += l_maxTimestep * l_cellSizeMeters;
+    l_simTime += l_timestep;
   }
   
   std::cout << "finished time loop" << std::endl;

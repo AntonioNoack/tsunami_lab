@@ -47,6 +47,17 @@ class tsunami_lab::setups::Setup {
                               t_real i_y ) const = 0;
 
     /**
+     * Gets the water depth at a given point.
+     * Positive values mean below sea level, negative values mean above sea level.
+     *
+     * @param i_x x-coordinate of the queried point.
+     * @param i_y y-coordinate of the queried point.
+     * @return water depth at the given point.
+     **/
+    virtual t_real getBathymetry( t_real i_x,
+                                  t_real i_y ) const = 0;
+
+    /**
      * Gets the momentum in x-direction.
      *
      * @param i_x x-coordinate of the queried point.

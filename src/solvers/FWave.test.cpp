@@ -101,7 +101,7 @@ TEST_CASE( "Test breaking dam.", "[FWave-netUpdate-breakingDam]" ) {
   // - alphas = R^-1 * [-10, -10]t = [-5, -5]t (Wolfram Alpha)
   // - net update values:
   // first alpha and lambda for left, second for right side, because sign(lambda1) != sign(lambda2)
-  // 	alpha * lambda * [1, lambda]
+  //     alpha * lambda * [1, lambda]
   // left side: 30.017855, -180.214323760205
   // right side: -40.017855, -320.2857437602051
   
@@ -162,7 +162,7 @@ TEST_CASE( "Test crashing waves.", "[FWave-netUpdate-crashingWaves]" ) {
   // - alphas = R^-1 * [0, -20]t = [1.00964, -1.00964]t (Wolfram Alpha)
   // - net update values:
   // first alpha and lambda for left, second for right side, because sign(lambda1) != sign(lambda2)
-  // 	alpha * lambda * [1, lambda]
+  //     alpha * lambda * [1, lambda]
   // left side: -10, +99.045684
   // right side: -10, -99.045684
   
@@ -194,7 +194,7 @@ TEST_CASE( "Test crashing waves.", "[FWave-netUpdate-crashingWaves]" ) {
 }
 
 TEST_CASE( "Test super-sonic.", "[FWave-netUpdate-superSonic]" ) {
-	
+    
   // damit man Über"schall"-Effekte bekommt, muss |weighted velocity average| > sqrt(gravity * avg height) sein,
   // also sehr flaches Wasser oder hohe Impulse.
   

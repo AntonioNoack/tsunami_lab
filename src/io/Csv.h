@@ -21,6 +21,7 @@
 #include "../constants.h"
 #include <cstring>
 #include <iostream>
+#include <vector>
 
 namespace tsunami_lab {
   namespace io {
@@ -50,6 +51,13 @@ class tsunami_lab::io::Csv {
                        t_real       const * i_hu,
                        t_real       const * i_hv,
                        std::ostream       & io_stream );
+    /**
+     * Reades numeric data in CSV format from a given stream.
+     *
+     * @param io_stream stream from which data is read.
+     * @return vector of attributes: first the name of the column, then all values.
+     **/
+    static std::vector<std::pair<std::string, std::vector<tsunami_lab::t_real>>> read( std::istream& io_stream );
 };
 
 #endif

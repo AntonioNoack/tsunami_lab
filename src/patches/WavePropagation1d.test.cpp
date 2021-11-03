@@ -90,24 +90,22 @@ TEST_CASE( "Test the 1d wave propagation solver.", "[WaveProp1d]" ) {
 }
 
 
-TEST_CASE( "Tests from sample file.", "[Discontinuity1d-sample-file]" ) {
+TEST_CASE( "Tests from sample file.", "[Discontinuity1d][SampleFile]" ) {
 
   // middle_states.csv contains a lot of samples to test our function
   // currently we only need to open a single csv file, so let's implement it locally
   // these tests were computed analytically, so our model probably cannot solve all of them correctly
-  // so we let it pass, if 99% of cases pass.
   
   std::fstream l_dataFile;
   l_dataFile.open("data/middle_states.csv", std::ios::in);
   
   REQUIRE(l_dataFile.is_open());
   
-  // in the first 500k tests, we only have 8 failed samples, but they are close as well
+  // in the first 500k tests, all tests pass with these settings and accuracy requirements
   // in the following 500k tests, there are a lot of failed samples, probably because our simulation is too small
   // because the rarefaction waves are too long
   t_idx l_testLimit = 500 * 1000;
   t_idx l_totalTests = 0;
-  t_idx l_passedTests = 0;
   t_real l_expectedEpsilon = 0.001;
   
   // to make more tests pass, these parameters can be tuned.
@@ -118,74 +116,62 @@ TEST_CASE( "Tests from sample file.", "[Discontinuity1d-sample-file]" ) {
   tsunami_lab::patches::WavePropagation1d l_simulation(l_size);
   
   std::string l_csvLine;
-  std::cout.precision(9);
-  while(getline(l_dataFile, l_csvLine) && l_totalTests < l_testLimit){
-	if(!l_csvLine.empty() && l_csvLine[0] != '#'){// not empty and not a comment
-	  if(l_csvLine[0] != 'h'){// not the table header
+  while(l_totalTests < l_testLimit && getline(l_dataFile, l_csvLine)){
+    if(!l_csvLine.empty() && l_csvLine[0] != '#'){// not empty and not a comment
+      if(l_csvLine[0] != 'h'){// not the table header
+        
+        l_totalTests++;
+        
+        std::stringstream l_lineStream(l_csvLine);
+        char l_comma;
+        t_real l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_targetValue;
+        l_lineStream >> l_heightLeft;   l_lineStream >> l_comma;
+        l_lineStream >> l_heightRight;  l_lineStream >> l_comma;
+        l_lineStream >> l_impulseLeft;  l_lineStream >> l_comma;
+        l_lineStream >> l_impulseRight; l_lineStream >> l_comma;
+        l_lineStream >> l_targetValue;
+        
+        // input must be valid
+        REQUIRE(l_heightLeft  >= 0);
+        REQUIRE(l_heightRight >= 0);
+		REQUIRE(l_targetValue >= 0);
 		
-		l_totalTests++;
-	    
-		std::stringstream l_lineStream(l_csvLine);
-		char l_comma;
-		t_real l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_targetValue;
-		l_lineStream >> l_heightLeft;   l_lineStream >> l_comma;
-		l_lineStream >> l_heightRight;  l_lineStream >> l_comma;
-		l_lineStream >> l_impulseLeft;  l_lineStream >> l_comma;
-		l_lineStream >> l_impulseRight; l_lineStream >> l_comma;
-		l_lineStream >> l_targetValue;
-		
-		// input must be valid
-		REQUIRE(l_heightLeft > 0);
-		REQUIRE(l_heightRight > 0);
-		if(l_targetValue <= 0){
-		  // REQUIRE(l_targetValue > 0);
-		  // we cannot solve no-water-solutions
-		  std::cout << "Warning! Skipped test [" << l_totalTests << "], because target height <= 0 " << l_csvLine << std::endl;
-		  continue;
-		}
-		
-		{// todo we could improve the performance of these tests, if we initialize them lazily
-		  tsunami_lab::setups::Discontinuity1d l_setup(l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_size / 2);
-		  l_simulation.initWithSetup(&l_setup, 1.0);
-		}
-		
-		// compute steps until we have converged
-		t_idx l_i;
-		t_real l_computed;
-		for(l_i=0;l_i<l_steps;l_i++){
-		  
-		  t_idx l_simulationRadius = l_i + 1;
-		  
-		  t_real l_timeStep = l_simulation.computeMaxTimestep(l_simulationRadius);
-		  
-		  // in these tests, updating the ghost zone is only needed in the first step theoretically
-		  // the border also only matters, if all 500 steps are used: only then can the initial wave travel from the center to the border (250 steps),
-		  // and cause a calculation error there, and then return with 250 to the center.
-		  l_simulation.setGhostOutflow();
-		  
-		  l_simulation.timeStep(l_timeStep, l_simulationRadius);
-		  
-		  // todo better convergence test (?)
-		  // convergence should have a single direction, so the only mistake that could happen, is when we step over the true result.
-		  
-		  l_computed = l_simulation.getHeight()[l_size / 2];
-		  bool l_passedTest = l_computed == Approx(l_targetValue).epsilon(l_expectedEpsilon);
-		  if(l_passedTest) break;
-		  
-		}
-		
-		bool l_passedTest = l_i < l_steps;
-		if(!l_passedTest) std::cout << "Warning! Failed test [" << l_totalTests << "] " << l_csvLine << ", computed " << l_computed << ", expected " << l_targetValue << std::endl;
-		else l_passedTests++;
-		
-		// if(l_totalTests % 25000 == 0) std::cout << "[" << l_totalTests << "] [" << l_i << "]" << std::endl;
-
-	  }
-	}
+		// just a guess, could be 1 as well; influence is rather small, I'd expect
+		t_real l_cellSizeMeters = (l_heightLeft + l_heightRight) * 0.5 / 8;
+        
+        {// we could improve the performance of these tests, if we initialize them lazily
+          tsunami_lab::setups::Discontinuity1d l_setup(l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_size / 2);
+          l_simulation.initWithSetup(&l_setup, 1.0);
+        }
+        
+        // compute steps until we have converged
+        t_idx l_i;
+        for(l_i=0;l_i<l_steps;l_i++){
+          
+          t_idx l_simulationRadius = l_i + 1;
+          t_real l_timeStep = l_simulation.computeMaxTimestep(l_cellSizeMeters, l_simulationRadius);
+          
+          // in these tests, updating the ghost zone is only needed in the first step theoretically
+          // the border also only matters, if all 500 steps are used: only then can the initial wave travel from the center to the border (250 steps),
+          // and cause a calculation error there, and then return with 250 to the center.
+          l_simulation.setGhostOutflow();
+          
+		  t_real l_scaling = l_timeStep / l_cellSizeMeters;
+          l_simulation.timeStep(l_scaling, l_simulationRadius);
+          
+          // todo better convergence test (?)
+          // convergence should have a single direction, so the only mistake that could happen, is when we step over the true result.
+          t_real l_hMiddleState = l_simulation.getHeight()[l_size / 2];
+          if(l_hMiddleState == Approx(l_targetValue).epsilon(l_expectedEpsilon)) break;
+          
+        }
+        
+		// we need to have converged
+        REQUIRE(l_i < l_steps);
+        
+      }
+    }
   }
-  
-  // we want to pass at least 99% of tests
-  REQUIRE(l_passedTests >= 0.99 * l_totalTests);
   
   l_dataFile.close();
 }

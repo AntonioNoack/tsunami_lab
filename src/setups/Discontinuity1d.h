@@ -20,21 +20,18 @@ namespace tsunami_lab {
 class tsunami_lab::setups::Discontinuity1d: public Setup {
   private:
     
-	//! fluid height left
-    t_real m_heightLeft = 0;
+    //! fluid height
+    t_real m_heightLeft = 0, m_heightRight = 0;
+    
+    //! initial impulse
+    t_real m_impulseLeft = 0, m_impulseRight = 0;
 	
-	//! fluid height right
-    t_real m_heightRight = 0;
-	
-	//! initial impulse on the left side
-	t_real m_impulseLeft = 0;
-	
-	//! initial impulse on the right side
-	t_real m_impulseRight = 0;
-
+	//! initial bathymetry
+	t_real m_bathymetryLeft = 0, m_bathymetryRight = 0;
+    
     //! location of the split
     t_real m_locationSplit = 0;
-
+  
   public:
     /**
      * Constructor.
@@ -46,13 +43,13 @@ class tsunami_lab::setups::Discontinuity1d: public Setup {
      * @param i_locationSplit location (x-coordinate) of the discontinuity.
      **/
     explicit Discontinuity1d( 
-	                t_real i_heightLeft,  t_real i_heightRight,
-					t_real i_impulseLeft, t_real i_impulseRight,
+                    t_real i_heightLeft,  t_real i_heightRight,
+                    t_real i_impulseLeft, t_real i_impulseRight,
                     t_real i_locationSplit ) : 
-					m_heightLeft(i_heightLeft), m_heightRight(i_heightRight),
-					m_impulseLeft(i_impulseLeft), m_impulseRight(i_impulseRight),
-					m_locationSplit(i_locationSplit) {}
-
+                    m_heightLeft(i_heightLeft), m_heightRight(i_heightRight),
+                    m_impulseLeft(i_impulseLeft), m_impulseRight(i_impulseRight),
+                    m_locationSplit(i_locationSplit) {}
+    
     /**
      * Gets the water height at a given point.
      *
@@ -61,6 +58,15 @@ class tsunami_lab::setups::Discontinuity1d: public Setup {
      **/
     t_real getHeight( t_real i_x, t_real ) const;
 
+    /**
+     * Gets the water depth at a given point.
+     * Positive values mean below sea level, negative values mean above sea level.
+     *
+     * @param i_x x-coordinate of the queried point.
+     * @return water depth at the given point.
+     **/
+    t_real getBathymetry( t_real i_x, t_real ) const;
+    
     /**
      * Gets the momentum in x-direction.
      *
@@ -75,7 +81,7 @@ class tsunami_lab::setups::Discontinuity1d: public Setup {
      * @return momentum in y-direction.
      **/
     t_real getMomentumY( t_real, t_real ) const;
-
+    
 };
 
 #endif // TSUNAMI_LAB_SETUPS_DISCONTINUITY_1D_H
