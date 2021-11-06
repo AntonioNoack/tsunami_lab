@@ -1,5 +1,5 @@
 /**
- * @author Alexander Breuer (alex.breuer AT uni-jena.de)
+ * @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
  * 
  * @section LICENSE
  * Copyright 2020, Friedrich Schiller University Jena
@@ -16,7 +16,6 @@
  * Entry-point for simulations.
  **/
 #include "patches/WavePropagation1d.h"
-// #include "setups/DamBreak1d.h"
 #include "setups/Discontinuity1d.h"
 #include "io/Csv.h"
 #include <cstdlib>
@@ -24,6 +23,8 @@
 #include <cmath>
 #include <fstream>
 #include <limits>
+#include <algorithm> // std::max
+#include <cstdio> // delete old files
 
 #define t_real tsunami_lab::t_real
 #define t_idx  tsunami_lab::t_idx
@@ -44,8 +45,8 @@ int main( int   i_argc,
   t_real l_impulseLeft = 0;
   t_real l_impulseRight = 0;
   t_real l_cellSizeMeters = 1;
-  t_real l_numTimesteps = 1000;
-  t_real l_numOutputSteps = 100;
+  t_idx  l_numTimesteps = 1000;
+  t_idx  l_numOutputSteps = 100;
 
   std::cout << "####################################" << std::endl;
   std::cout << "### Tsunami Lab                  ###" << std::endl;
@@ -79,6 +80,13 @@ int main( int   i_argc,
   std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
   std::cout << "  number of cells in y-direction: " << l_ny << std::endl;
   std::cout << "  cell size (meters):             " << l_cellSizeMeters << std::endl;
+  
+  for(t_idx l_i=0;l_i<1000;l_i++){
+	// delete all old files;
+	// paraview caused me enough headaches
+	std::string l_path = "solution_" + std::to_string(l_i) + ".csv";
+	remove(l_path.c_str());
+  }
 
   // construct setup
   tsunami_lab::setups::Setup *l_setup = new tsunami_lab::setups::Discontinuity1d( l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_nx / 2 );
@@ -97,11 +105,11 @@ int main( int   i_argc,
   std::cout << "entering time loop" << std::endl;
 
   // iterate over time
-  t_idx l_lastOutputIndex = -1;// -1 to always print the inital state, 0 to skip it
+  t_idx l_lastOutputIndex = -1;// -1 to always print the initial state, 0 to skip it
   for(t_idx l_timeStepIndex=0; l_timeStepIndex < l_numTimesteps; l_timeStepIndex++ ){
     // index, which frame we'd need to print theoretically
     // if there are more frames requested than simulated, we just skip some
-    t_idx l_outputIndex = l_timeStepIndex * l_numOutputSteps / l_numTimesteps;
+    t_idx l_outputIndex = l_timeStepIndex * (l_numOutputSteps-1) / std::max(l_numTimesteps-1, (t_idx) 1);
     if(l_lastOutputIndex != l_outputIndex) {
       l_lastOutputIndex = l_outputIndex;
       
@@ -113,7 +121,7 @@ int main( int   i_argc,
       std::ofstream l_file;
       l_file.open( l_path  );
 
-      tsunami_lab::io::Csv::write( l_cellSizeMeters, l_nx, l_ny, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), nullptr, l_file );
+      tsunami_lab::io::Csv::write( l_cellSizeMeters, l_nx, l_ny, 1, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), nullptr, l_file );
       l_file.close();
       l_nOut++;
     }

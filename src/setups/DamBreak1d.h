@@ -63,7 +63,7 @@ class tsunami_lab::setups::DamBreak1d: public Setup {
 
     /**
      * Gets the water depth at a given point.
-     * Positive values mean below sea level, negative values mean above sea level.
+     * Positive values mean above sea level, negative values mean below sea level.
      *
      * @return water depth at the given point.
      **/

@@ -134,10 +134,10 @@ TEST_CASE( "Tests from sample file.", "[Discontinuity1d][SampleFile]" ) {
         // input must be valid
         REQUIRE(l_heightLeft  >= 0);
         REQUIRE(l_heightRight >= 0);
-		REQUIRE(l_targetValue >= 0);
-		
-		// just a guess, could be 1 as well; influence is rather small, I'd expect
-		t_real l_cellSizeMeters = (l_heightLeft + l_heightRight) * 0.5 / 8;
+        REQUIRE(l_targetValue >= 0);
+        
+        // just a guess, could be 1 as well; influence is rather small, I'd expect
+        t_real l_cellSizeMeters = (l_heightLeft + l_heightRight) * 0.5 / 8;
         
         {// we could improve the performance of these tests, if we initialize them lazily
           tsunami_lab::setups::Discontinuity1d l_setup(l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_size / 2);
@@ -156,7 +156,7 @@ TEST_CASE( "Tests from sample file.", "[Discontinuity1d][SampleFile]" ) {
           // and cause a calculation error there, and then return with 250 to the center.
           l_simulation.setGhostOutflow();
           
-		  t_real l_scaling = l_timeStep / l_cellSizeMeters;
+          t_real l_scaling = l_timeStep / l_cellSizeMeters;
           l_simulation.timeStep(l_scaling, l_simulationRadius);
           
           // todo better convergence test (?)
@@ -166,7 +166,7 @@ TEST_CASE( "Tests from sample file.", "[Discontinuity1d][SampleFile]" ) {
           
         }
         
-		// we need to have converged
+        // we need to have converged
         REQUIRE(l_i < l_steps);
         
       }

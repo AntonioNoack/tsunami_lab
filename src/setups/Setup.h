@@ -48,7 +48,7 @@ class tsunami_lab::setups::Setup {
 
     /**
      * Gets the water depth at a given point.
-     * Positive values mean below sea level, negative values mean above sea level.
+     * Positive values mean above sea level, negative values mean below sea level.
      *
      * @param i_x x-coordinate of the queried point.
      * @param i_y y-coordinate of the queried point.

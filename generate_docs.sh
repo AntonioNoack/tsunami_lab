@@ -1,1 +1,2 @@
 doxygen Doxyfile
+make html

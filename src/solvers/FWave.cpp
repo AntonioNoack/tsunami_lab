@@ -6,6 +6,7 @@
 #include "FWave.h"
 #include <cmath>
 #include <stdio.h>
+#include <iostream>
 
 void tsunami_lab::solvers::FWave::inverse2x2(t_real io_matrix[2][2]){
   //            |a b|    |+d -b|       |a b|
@@ -66,39 +67,63 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
     // tests, because if one side was empty, we would create NaN otherwise
     t_real l_uL = i_hL ? i_huL / i_hL : 0.0;
     t_real l_uR = i_hR ? i_huR / i_hR : 0.0;
-    t_real l_roeVelocity = (l_uL * l_sqrtHLeft + l_uR * l_sqrtHRight) / (l_sqrtHLeft + l_sqrtHRight);
+    t_real l_roeVelocity = (l_uL * l_sqrtHLeft + l_uR * l_sqrtHRight) / (l_sqrtHLeft + l_sqrtHRight);// velcity mixed by sqrt(h)
     t_real l_gravityTerm = sqrt(m_gravity * l_roeHeight);
-	t_real l_bathymetryTerm = m_gravity * (i_bR - i_bL) * l_roeHeight;
+    t_real l_bathymetryTerm = m_gravity * (i_bR - i_bL) * l_roeHeight;// [m/s²*m²]
     
     // wave speeds
     t_real l_lambda1 = l_roeVelocity - l_gravityTerm;
     t_real l_lambda2 = l_roeVelocity + l_gravityTerm;
     
-    t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };
-    inverse2x2(l_r12);
+    t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, m/s]
+    inverse2x2(l_r12);// [1, s/m]
     
-    t_real l_deltaField[2] = { 
-		i_hR - i_hL,
-		i_huR - i_huL + l_bathymetryTerm // todo is this the correct place???...
-	};
+    #if 0
+    
+    // alter Code, wenn man die Bathymetrie hinzufügen würde:
+    // die Einheiten würden nicht mehr stimmen.
+    // https://github.com/breuera/swe_solvers/blob/master/src/solver/FWave.hpp
+    // zieht deshalb die Wellengeschwindigkeit mit in den Fluss.
+    t_real l_deltaField[2] = {
+      i_hR  - i_hL, // [m]
+      i_huR - i_huL // [m*m/s]
+        + l_bathymetryTerm // [m/s²*m²]
+    };
     t_real l_alpha[2];
     transform2x2(l_r12, l_deltaField, l_alpha);
     
+    t_real l_delta_hL = l_alpha[0] * l_lambda1;
+    t_real l_delta_hR = l_alpha[1] * l_lambda2;
+    
+    #else
+    
+    t_real l_deltaField[2] = {
+      i_huR - i_huL, // [m*m/s]
+      i_huR * l_uR - i_huL * l_uL // [m*m/s * m/s]
+      + (t_real) 0.5 * m_gravity * ( i_hR * i_hR - i_hL * i_hL ) // [m/s² * m²]
+      + l_bathymetryTerm // = 0.5 * gravity * (bR - bL) * (hL + hR)
+    };
+    t_real l_alpha[2];
+    transform2x2(l_r12, l_deltaField, l_alpha);// [1, s/m] * [m²/s, m³/s²] = [m²/s]
+    
+    t_real l_delta_hL = l_alpha[0];
+    t_real l_delta_hR = l_alpha[1];
+
+    #endif
+    
     // Z_p = wave1/2 = alpha_p * r_p + bathymetryTerm
-    t_real l_wave1[2] = { l_alpha[0] * l_lambda1 };
-    t_real l_wave2[2] = { l_alpha[1] * l_lambda2 };
-    l_wave1[1] = l_wave1[0] * l_lambda1;
-    l_wave2[1] = l_wave2[0] * l_lambda2;
+    t_real l_delta_huL = l_delta_hL * l_lambda1;
+    t_real l_delta_huR = l_delta_hR * l_lambda2;
     
     if(l_lambda1 < 0){// first wave, typically first branch is used
       // to the left
-      o_netUpdateL[0] = l_wave1[0];
-      o_netUpdateL[1] = l_wave1[1];
+      o_netUpdateL[0] = l_delta_hL;
+      o_netUpdateL[1] = l_delta_huL;
       o_netUpdateR[0] = o_netUpdateR[1] = 0;
     } else {
       // to the right
-      o_netUpdateR[0] = l_wave1[0];
-      o_netUpdateR[1] = l_wave1[1];
+      o_netUpdateR[0] = l_delta_hL;
+      o_netUpdateR[1] = l_delta_huL;
       o_netUpdateL[0] = o_netUpdateL[1] = 0;
     }
     
@@ -106,17 +131,16 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
     // Therefore we need to use "+=" instead of "=".
     if(l_lambda2 < 0){// second wave, typically second branch is used
       // to the left
-      o_netUpdateL[0] += l_wave2[0];
-      o_netUpdateL[1] += l_wave2[1];
+      o_netUpdateL[0] += l_delta_hR;
+      o_netUpdateL[1] += l_delta_huR;
     } else {
       // to the right
-      o_netUpdateR[0] += l_wave2[0];
-      o_netUpdateR[1] += l_wave2[1];
+      o_netUpdateR[0] += l_delta_hR;
+      o_netUpdateR[1] += l_delta_huR;
     }
     
   } else {
     // else there is no water -> no update required
     o_netUpdateL[0] = o_netUpdateL[1] = o_netUpdateR[0] = o_netUpdateR[1] = 0;
   }
-  
 }

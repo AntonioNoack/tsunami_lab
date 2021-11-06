@@ -9,6 +9,7 @@
 #include "Roe.h"
 #undef public
 
+#define t_idx  tsunami_lab::t_idx
 #define t_real tsunami_lab::t_real
 
 TEST_CASE( "Test the matrix inverse.", "[FWave-Matrix-Inverse]" ) {
@@ -132,7 +133,7 @@ TEST_CASE( "Test breaking dam.", "[FWave-netUpdate-breakingDam]" ) {
   
 }
 
-TEST_CASE( "Test crashing waves.", "[FWave-netUpdate-crashingWaves]" ) {
+TEST_CASE( "Test crashing waves.", "[FWave][NetUpdate][crashingWaves]" ) {
   
   // two waves of equal size and velocity crash together
   
@@ -193,7 +194,7 @@ TEST_CASE( "Test crashing waves.", "[FWave-netUpdate-crashingWaves]" ) {
   
 }
 
-TEST_CASE( "Test super-sonic.", "[FWave-netUpdate-superSonic]" ) {
+TEST_CASE( "Test super-sonic.", "[FWave][NetUpdate][SuperSonic]" ) {
     
   // damit man Über"schall"-Effekte bekommt, muss |weighted velocity average| > sqrt(gravity * avg height) sein,
   // also sehr flaches Wasser oder hohe Impulse.
@@ -220,6 +221,44 @@ TEST_CASE( "Test super-sonic.", "[FWave-netUpdate-superSonic]" ) {
   REQUIRE( l_deltaRight[0] == Approx(0) );
   REQUIRE( l_deltaRight[1] == Approx(0) );
   
+}
+
+#include <iostream>
+TEST_CASE( "Test bathymetry.", "[FWave][NetUpdate][Bathymetry]" ) {
+  
+  constexpr t_idx l_sampleCount = 3;
+  t_real l_samples[l_sampleCount][2] = {
+    { -40, -30 }, { -3462, -3450 }, { -5635.83, -5684.31 }
+  };
+  
+  for(t_idx l_i=0;l_i<l_sampleCount;l_i++){
+    
+    t_real l_bL = l_samples[l_i][0];
+    t_real l_bR = l_samples[l_i][1];
+    
+    t_real l_surfaceHeight = 0;// water goes up to zero
+    t_real l_hL = l_surfaceHeight - l_bL;
+    t_real l_hR = l_surfaceHeight - l_bR;
+    
+    t_real l_impulse = 0;
+    
+    t_real l_deltaLeft[2];
+    t_real l_deltaRight[2];
+    
+    tsunami_lab::solvers::FWave::netUpdates(l_hL, l_hR, l_impulse, l_impulse, l_bL, l_bR, l_deltaLeft, l_deltaRight);
+    
+    // irgendwie ist der Löser ziemlich ungenau: woran liegt diese große numerische Instabilität?
+    t_real l_m = 0.001;//std::numeric_limits<t_real>::epsilon();
+    
+    std::cout << l_deltaLeft[0] << "," << l_deltaLeft[1] << "|" << l_deltaRight[0] << "," << l_deltaRight[1] << std::endl;
+    
+    // the water has no reason to flow
+    // -> all deltas should be zero
+    REQUIRE( l_deltaLeft[0]  == Approx(0).margin(l_m) );
+    REQUIRE( l_deltaLeft[1]  == Approx(0).margin(l_m) );
+    REQUIRE( l_deltaRight[0] == Approx(0).margin(l_m) );
+    REQUIRE( l_deltaRight[1] == Approx(0).margin(l_m) );
+  }
 }
 
 #undef t_real

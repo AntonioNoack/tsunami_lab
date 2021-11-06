@@ -25,9 +25,9 @@ class tsunami_lab::setups::Discontinuity1d: public Setup {
     
     //! initial impulse
     t_real m_impulseLeft = 0, m_impulseRight = 0;
-	
-	//! initial bathymetry
-	t_real m_bathymetryLeft = 0, m_bathymetryRight = 0;
+    
+    //! initial bathymetry
+    t_real m_bathymetryLeft = 0, m_bathymetryRight = 0;
     
     //! location of the split
     t_real m_locationSplit = 0;
@@ -60,7 +60,7 @@ class tsunami_lab::setups::Discontinuity1d: public Setup {
 
     /**
      * Gets the water depth at a given point.
-     * Positive values mean below sea level, negative values mean above sea level.
+     * Positive values mean above sea level, negative values mean below sea level.
      *
      * @param i_x x-coordinate of the queried point.
      * @return water depth at the given point.

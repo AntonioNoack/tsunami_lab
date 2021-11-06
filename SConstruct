@@ -82,6 +82,7 @@ VariantDir( variant_dir = 'build/src',
 
 env.sources = []
 env.tests = []
+env.tsunami1d = []
 
 Export('env')
 SConscript( 'build/src/SConscript' )
@@ -89,6 +90,9 @@ Import('env')
 
 env.Program( target = 'build/tsunami_lab',
              source = env.sources + env.standalone )
+
+env.Program( target = 'build/tsunami1d',
+             source = env.sources + env.tsunami1d )
 
 env.Program( target = 'build/tests',
              source = env.sources + env.tests )

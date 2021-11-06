@@ -1,0 +1,6 @@
+# exclude results
+solution*
+doxygen/*
+build/*
+sphinx/_build/*
+.sconsign.dblite
