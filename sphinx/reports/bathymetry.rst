@@ -39,10 +39,17 @@ The hydraulic jump is between 11.45 and 11.65. The small peak on the momentum gr
 1D Tsunami Simulation
 ---------------------
 
-I have implemented the CSV loader in the existing CSV writer class. The return value is a composed datatype of existing C++ structures:
+I have implemented the CSV loader in the existing CSV writer class. The return value is a composed data type of existing C++ structures:
 a list of columns, where a column is a title and a vector of its values.
 
-The extraction for the data using GMT, or some sample needed a few secondary packages: gmt-gshhg for the data-sets, ghostscript, and xdg-utils to open files in the preferred program.
+The extraction for the data using GMT, or some sample needed a few secondary packages: gmt-gshhg for the data-sets, ghostscript, and xdg-utils to open files in the preferred program. Then with the scripts from the cloud, everything worked fine.
 
-The loader then was combined into tsunami.cpp and TsunamiEvent1d, which load the data as a setup, and simulate the waves. Good values for running the simulation are 10000 computed steps, and 100 printed steps. This is equal to the command ./build/tsunami1d 10000 200
+The CSV loader then was combined into tsunami.cpp and TsunamiEvent1d, which load the data as a setup, and simulate the waves. Good values for running the simulation are 20000 computed steps, and 100 printed steps. This is equal to the command ./build/tsunami1d 20000 200 (commit 4f4f6269158fd4d7c79fac2b4850b111ae102e9e).
+
+.. raw:: html
+
+    <iframe width="560" height="315" src="http://www.youtube.com/embed/p8Hg5gJ3yiE?rel=0" frameborder="0" allowfullscreen></iframe>
+
+The wave traveling to the right disappears, just as we expect from the outflowing boundary condition. In the deep water, the right wave becomes longer. The left side travels towards the coast, and as it does that, the wave gets smaller (length and height). Then it is reflected by our reflecting dry-wet-transition on the coast. After the reflection, the wave continues to become smaller and longer.
+The wave used roughly 50 minutes to reached the coast.
 
