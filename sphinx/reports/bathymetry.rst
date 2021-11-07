@@ -50,6 +50,8 @@ The CSV loader then was combined into tsunami.cpp and TsunamiEvent1d, which load
 
     <iframe width="560" height="315" src="http://www.youtube.com/embed/p8Hg5gJ3yiE?rel=0" frameborder="0" allowfullscreen></iframe>
 
+The video was rendered in ParaView.
+
 The wave traveling to the right disappears, just as we expect from the outflowing boundary condition. In the deep water, the right wave becomes longer. The left side travels towards the coast, and as it does that, the wave gets smaller (length and height). Then it is reflected by our reflecting dry-wet-transition on the coast. After the reflection, the wave continues to become smaller and longer.
 The wave used roughly 50 minutes to reached the coast.
 
