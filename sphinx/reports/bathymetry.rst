@@ -46,9 +46,13 @@ The extraction for the data using GMT, or some sample needed a few secondary pac
 
 The CSV loader then was combined into tsunami.cpp and TsunamiEvent1d, which load the data as a setup, and simulate the waves. Good values for running the simulation are 20000 computed steps, and 100 printed steps. This is equal to the command ./build/tsunami1d 20000 200 (commit 4f4f6269158fd4d7c79fac2b4850b111ae102e9e).
 
+
 .. raw:: html
 
-    <iframe width="560" height="315" src="http://www.youtube.com/embed/p8Hg5gJ3yiE?rel=0" frameborder="0" allowfullscreen></iframe>
+    <iframe width="696" height="573" src="http://www.youtube.com/embed/p8Hg5gJ3yiE?rel=0" frameborder="0" allowfullscreen></iframe>
+
+..
+    the original video can be found as w3_tsunami.mp4 in the source folder!
 
 The video was rendered in ParaView.
 
