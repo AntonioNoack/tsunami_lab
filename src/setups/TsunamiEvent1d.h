@@ -50,7 +50,7 @@ class tsunami_lab::setups::TsunamiEvent1d: public Setup {
      * @param i_displacement height of displacement.
      **/
     explicit TsunamiEvent1d( t_real* i_bathymetry,
-	                         t_idx   i_size,
+                             t_idx   i_size,
                              t_real  i_scale,
                              t_real  i_displacementStart,
                              t_real  i_displacementEnd,

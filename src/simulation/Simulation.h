@@ -27,8 +27,8 @@ class tsunami_lab::simulation::Simulation {
      * @param i_setup initial state of simulation.
      * @param i_setupScale scale for initial state.
      * @param i_cellSizeMeters size of cells in meters.
-	 * @param i_numTimesteps how many timesteps will be computed.
-	 * @param i_outputStepSize every step-th cell will be printed to save storage space.
+     * @param i_numTimesteps how many timesteps will be computed.
+     * @param i_outputStepSize every step-th cell will be printed to save storage space.
      * @param i_numOutputSteps how many time steps will be writtem to disk.
      **/
     static void run(tsunami_lab::t_idx           i_nx,
@@ -38,7 +38,7 @@ class tsunami_lab::simulation::Simulation {
                     tsunami_lab::t_real          i_cellSizeMeters,
                     tsunami_lab::t_idx           i_numTimesteps,
                     tsunami_lab::t_idx           i_outputStepSize,
-					tsunami_lab::t_idx           i_numOutputSteps);
+                    tsunami_lab::t_idx           i_numOutputSteps);
 
 };
 

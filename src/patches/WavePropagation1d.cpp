@@ -162,7 +162,7 @@ void tsunami_lab::patches::WavePropagation1d::timeStep( t_real i_scaling, t_idx 
       l_hNew [l_ceL] -= i_scaling * l_netUpdatesL[0];
       l_huNew[l_ceL] -= i_scaling * l_netUpdatesL[1];
     } else l_huNew[l_ceL] = l_hNew[l_ceL] = 0;
-	
+    
     if(l_bR0 < 0){
       l_hNew [l_ceR] -= i_scaling * l_netUpdatesR[0];
       l_huNew[l_ceR] -= i_scaling * l_netUpdatesR[1];

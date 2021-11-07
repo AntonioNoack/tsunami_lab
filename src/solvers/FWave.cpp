@@ -80,9 +80,9 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
     
     // Bathymetrie nach
     // https://github.com/breuera/swe_solvers/blob/master/src/solver/FWave.hpp,
-	// da bloßes Einfügen in den alten Code zu nicht-passenden-Einheiten und damit zu
-	// Fehlern geführt hätte.
-	
+    // da bloßes Einfügen in den alten Code zu nicht-passenden-Einheiten und damit zu
+    // Fehlern geführt hätte.
+    
     t_real l_deltaField[2] = {
       i_huR - i_huL, // [m*m/s]
       i_huR * l_uR - i_huL * l_uL // [m*m/s * m/s]
