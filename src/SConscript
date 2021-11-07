@@ -24,6 +24,9 @@ l_sources = [ 'solvers/Roe.cpp',
               'setups/DamBreak1d.cpp',
               'setups/Discontinuity1d.cpp',
               'setups/TsunamiEvent1d.cpp',
+              'setups/SubcriticalFlow1d.cpp',
+              'setups/SupercriticalFlow1d.cpp',
+              'simulation/Simulation.cpp',
               'io/Csv.cpp' ]
 
 for l_src in l_sources:
@@ -31,6 +34,7 @@ for l_src in l_sources:
 
 env.standalone = env.Object( "main.cpp" )
 env.tsunami1d = env.Object( "tsunami1d.cpp" );
+env.critical1d = env.Object( "critical1d.cpp" );
 
 # gather unit tests
 l_tests = [ 'tests.cpp',

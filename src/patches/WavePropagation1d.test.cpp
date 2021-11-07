@@ -175,3 +175,35 @@ TEST_CASE( "Tests from sample file.", "[Discontinuity1d][SampleFile]" ) {
   
   l_dataFile.close();
 }
+
+
+TEST_CASE( "Shock-Shock by reflective boundary condition.", "[WaveProp1d][Shock-Shock-By-Boundary]" ) {
+  /*
+   * Test case:
+   *   A flow from left to right, but on the right side is a wall
+   */
+
+  // construct solver and setup problem
+  tsunami_lab::patches::WavePropagation1d m_waveProp(10);
+
+  for( std::size_t l_ce = 0; l_ce < 10; l_ce++ ) {
+    bool l_isWater = l_ce < 9;
+    m_waveProp.setHeight( l_ce, 0, l_isWater ? 10 : 0 );
+    m_waveProp.setMomentumX( l_ce, 0, 5 );
+    m_waveProp.setBathymetry( l_ce, 0, l_isWater ? -20 : +20 );// floor / wall
+  }
+
+  // set outflow boundary condition
+  m_waveProp.setGhostOutflow();
+
+  // perform a series of time steps
+  for(int i=0;i<50;i++) m_waveProp.timeStep( m_waveProp.computeMaxTimestep(1.0) );
+  
+  // then everything should be higher than 10, because the shock-shock wave increases the height
+  // also the momentum should be much lower, close to zero
+  for( std::size_t l_ce = 0; l_ce < 9; l_ce++ ){
+    REQUIRE( m_waveProp.getHeight()[l_ce] > 10 );
+    REQUIRE( m_waveProp.getMomentumX()[l_ce] < 1 );
+  }
+
+}

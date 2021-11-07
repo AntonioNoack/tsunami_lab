@@ -78,25 +78,11 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
     t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, m/s]
     inverse2x2(l_r12);// [1, s/m]
     
-    #if 0
-    
-    // alter Code, wenn man die Bathymetrie hinzufügen würde:
-    // die Einheiten würden nicht mehr stimmen.
-    // https://github.com/breuera/swe_solvers/blob/master/src/solver/FWave.hpp
-    // zieht deshalb die Wellengeschwindigkeit mit in den Fluss.
-    t_real l_deltaField[2] = {
-      i_hR  - i_hL, // [m]
-      i_huR - i_huL // [m*m/s]
-        + l_bathymetryTerm // [m/s²*m²]
-    };
-    t_real l_alpha[2];
-    transform2x2(l_r12, l_deltaField, l_alpha);
-    
-    t_real l_delta_hL = l_alpha[0] * l_lambda1;
-    t_real l_delta_hR = l_alpha[1] * l_lambda2;
-    
-    #else
-    
+    // Bathymetrie nach
+    // https://github.com/breuera/swe_solvers/blob/master/src/solver/FWave.hpp,
+	// da bloßes Einfügen in den alten Code zu nicht-passenden-Einheiten und damit zu
+	// Fehlern geführt hätte.
+	
     t_real l_deltaField[2] = {
       i_huR - i_huL, // [m*m/s]
       i_huR * l_uR - i_huL * l_uL // [m*m/s * m/s]
@@ -108,8 +94,6 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
     
     t_real l_delta_hL = l_alpha[0];
     t_real l_delta_hR = l_alpha[1];
-
-    #endif
     
     // Z_p = wave1/2 = alpha_p * r_p + bathymetryTerm
     t_real l_delta_huL = l_delta_hL * l_lambda1;

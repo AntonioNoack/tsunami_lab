@@ -151,6 +151,18 @@ class tsunami_lab::patches::WavePropagation1d: public WavePropagation {
     }
     
     /**
+     * Sets the bathymetry of the cell to the given value.
+     *
+     * @param i_ix id of the cell in x-direction.
+     * @param i_b bathymetry.
+     **/
+    void setBathymetry( t_idx  i_ix,
+                        t_idx,
+                        t_real i_b ) {
+      m_bathymetry[i_ix+1] = i_b;
+    }
+    
+    /**
      * Sets the height of the cell to the given value.
      *
      * @param i_ix id of the cell in x-direction.

@@ -94,5 +94,8 @@ env.Program( target = 'build/tsunami_lab',
 env.Program( target = 'build/tsunami1d',
              source = env.sources + env.tsunami1d )
 
+env.Program( target = 'build/critical1d',
+             source = env.sources + env.critical1d )
+
 env.Program( target = 'build/tests',
              source = env.sources + env.tests )

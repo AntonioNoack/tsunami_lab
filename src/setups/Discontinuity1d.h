@@ -27,7 +27,7 @@ class tsunami_lab::setups::Discontinuity1d: public Setup {
     t_real m_impulseLeft = 0, m_impulseRight = 0;
     
     //! initial bathymetry
-    t_real m_bathymetryLeft = 0, m_bathymetryRight = 0;
+    t_real m_bathymetryLeft = -20, m_bathymetryRight = -20;
     
     //! location of the split
     t_real m_locationSplit = 0;

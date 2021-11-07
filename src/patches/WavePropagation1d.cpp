@@ -44,7 +44,7 @@ tsunami_lab::patches::WavePropagation1d::WavePropagation1d( t_idx i_nCells ) {
     }
   }
   for( t_idx l_ce = 0; l_ce < l_cellCount; l_ce++ ) {
-    m_bathymetry[l_ce] = 0;
+    m_bathymetry[l_ce] = -20;
   }
 }
 
