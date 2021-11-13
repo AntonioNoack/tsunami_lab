@@ -75,8 +75,8 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
     t_real l_lambda1 = l_roeVelocity - l_gravityTerm;
     t_real l_lambda2 = l_roeVelocity + l_gravityTerm;
     
-    t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, m/s]
-    inverse2x2(l_r12);// [1, s/m]
+    t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, 1, m/s, m/s]
+    inverse2x2(l_r12);// [1, s/m, 1, s/m]
     
     // Bathymetrie nach
     // https://github.com/breuera/swe_solvers/blob/master/src/solver/FWave.hpp,
@@ -90,7 +90,7 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
       + l_bathymetryTerm // = 0.5 * gravity * (bR - bL) * (hL + hR)
     };
     t_real l_alpha[2];
-    transform2x2(l_r12, l_deltaField, l_alpha);// [1, s/m] * [m²/s, m³/s²] = [m²/s]
+    transform2x2(l_r12, l_deltaField, l_alpha);// [1, s/m, 1, s/m] * [m²/s, m³/s²] = [m²/s]
     
     t_real l_delta_hL = l_alpha[0];
     t_real l_delta_hR = l_alpha[1];

@@ -1,5 +1,5 @@
 /**
- * @author Alexander Breuer (alex.breuer AT uni-jena.de)
+ * @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
  * 
  * @section LICENSE
  * Copyright 2020, Friedrich Schiller University Jena
@@ -39,6 +39,11 @@ class tsunami_lab::patches::WavePropagation {
      * @param i_scaling scaling of the time step.
      **/
     virtual void timeStep( t_real i_scaling ) = 0;
+    
+    /**
+     * Computes the maximum time step that is allowed without breaking the CFL condition.
+     **/
+    virtual t_real computeMaxTimestep( t_real i_cellSizeMeters ) = 0;
 
     /**
      * Sets the values of the ghost cells according to outflow boundary conditions.

@@ -1,0 +1,6 @@
+nx: 100
+hl: 10
+hr: 1
+maxSteps: 100
+maxDuration: 100
+stations: config/dam_break_stations.csv

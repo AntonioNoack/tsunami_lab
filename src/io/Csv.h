@@ -88,6 +88,14 @@ class tsunami_lab::io::Csv {
     static std::vector<std::pair<std::string, std::vector<tsunami_lab::t_real>>> read( std::istream& io_stream );
     
     /**
+     * Reads numeric data in CSV format from a given file by name.
+     *
+     * @param i_fileName name of the file to read from.
+     * @return vector of attributes: first the name of the column, then all values.
+     **/
+    static std::vector<std::pair<std::string, std::vector<tsunami_lab::t_real>>> read( std::string i_fileName );
+    
+    /**
      * Finds the column inside the csv data.
      *
      * @param i_csvData the csv to search in.

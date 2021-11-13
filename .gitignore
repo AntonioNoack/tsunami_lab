@@ -1,5 +1,6 @@
 # exclude results
-solution*
+solution_*
+station_*
 doxygen/*
 build/*
 sphinx/_build/*

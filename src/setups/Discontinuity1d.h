@@ -49,6 +49,26 @@ class tsunami_lab::setups::Discontinuity1d: public Setup {
                     m_heightLeft(i_heightLeft), m_heightRight(i_heightRight),
                     m_impulseLeft(i_impulseLeft), m_impulseRight(i_impulseRight),
                     m_locationSplit(i_locationSplit) {}
+    /**
+     * Constructor.
+     *
+     * @param i_heightLeft water height on the left side of the discontinuity.
+     * @param i_heightRight water height on the right side of the discontinuity.
+     * @param i_impulseLeft water momentum in x direction on the left side of the discontinuity.
+     * @param i_impulseRight water momentum in x direction on the right side of the discontinuity.
+     * @param i_bathymetryLeft bathymetry on the left side.
+     * @param i_bathymetryRight bathymetry on the right side.
+     * @param i_locationSplit location (x-coordinate) of the discontinuity.
+     **/
+    explicit Discontinuity1d( 
+                    t_real i_heightLeft,     t_real i_heightRight,
+                    t_real i_impulseLeft,    t_real i_impulseRight,
+                    t_real i_bathymetryLeft, t_real i_bathymetryRight,
+                    t_real i_locationSplit ) : 
+                    m_heightLeft(i_heightLeft), m_heightRight(i_heightRight),
+                    m_impulseLeft(i_impulseLeft), m_impulseRight(i_impulseRight),
+                    m_bathymetryLeft(i_bathymetryLeft), m_bathymetryRight(i_bathymetryRight),
+                    m_locationSplit(i_locationSplit) {}
     
     /**
      * Gets the water height at a given point.

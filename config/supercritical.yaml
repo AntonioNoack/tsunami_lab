@@ -1,0 +1,4 @@
+setup: Supercritical
+maxDuration: 20
+outputSteps: 100
+scale: 10

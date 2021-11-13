@@ -1,10 +1,10 @@
 /**
  * @author Antonio Noack
  * @section DESCRIPTION
- * One-dimensional single discontinuity problem.
+ * One-dimensional tsunami event problem.
  **/
-#ifndef TSUNAMI_LAB_SETUPS_DISCONTINUITY_1D_H
-#define TSUNAMI_LAB_SETUPS_DISCONTINUITY_1D_H
+#ifndef TSUNAMI_LAB_SETUPS_TSUNAMI_EVENT_1D_H
+#define TSUNAMI_LAB_SETUPS_TSUNAMI_EVENT_1D_H
 
 #include "Setup.h"
 

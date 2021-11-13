@@ -15,8 +15,11 @@
  * @section DESCRIPTION
  * IO-routines for writing a snapshot as Comma Separated Values (CSV).
  **/
+
 #include "Csv.h"
+
 #include <sstream>
+#include <fstream>
 
 void tsunami_lab::io::Csv::write( t_real               i_dxy,
                                   t_idx                i_nx,
@@ -147,6 +150,18 @@ std::vector<std::pair<std::string, std::vector<tsunami_lab::t_real>>> tsunami_la
   
   return l_result;
   
+}
+
+std::vector<std::pair<std::string, std::vector<tsunami_lab::t_real>>> tsunami_lab::io::Csv::read( std::string i_fileName ){
+  std::ifstream l_stream(i_fileName, std::ios::in);
+  if(!l_stream.is_open()){
+    std::cerr << "file \"" << i_fileName << "\" could not be opened" << std::endl;
+    std::vector<std::pair<std::string, std::vector<tsunami_lab::t_real>>> empty;
+    return empty;
+  }
+  auto l_result = read(l_stream);
+  l_stream.close();
+  return l_result;
 }
 
 std::vector<tsunami_lab::t_real> tsunami_lab::io::Csv::findColumn( 

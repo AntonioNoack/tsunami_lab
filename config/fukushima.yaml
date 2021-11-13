@@ -1,0 +1,5 @@
+setup: Track
+setupFile: data/fukushima.csv
+maxSteps: 100000
+maxDuration: 3600
+outputSteps: 1000

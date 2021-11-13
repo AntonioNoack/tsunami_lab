@@ -15,72 +15,227 @@
  * @section DESCRIPTION
  * Entry-point for simulations.
  **/
+ 
+#include <vector>
+#include <map>
+#include <fstream>
+#include <limits> // infinity, max int
+
 #include "simulation/Simulation.h"
 #include "setups/Discontinuity1d.h"
-#include <cstdlib>
-#include <iostream>
-#include <cmath>
-#include <fstream>
-#include <limits>
-#include <algorithm> // std::max
-#include <cstdio> // delete old files
+#include "setups/DamBreak1d.h"
+#include "setups/DamBreak2d.h"
+#include "setups/SubcriticalFlow1d.h"
+#include "setups/SupercriticalFlow1d.h"
+#include "setups/TsunamiEvent1d.h"
+#include "io/Station.h"
+#include "io/Csv.h"
 
 #define t_real tsunami_lab::t_real
 #define t_idx  tsunami_lab::t_idx
 
-int main( int   i_argc,
-          char *i_argv[] ) {
-              
-  // this sample once expected a size, and then implemented the dam problem
-  // instead, I'll change it to use my Discontinuity1d setup to test the shock-shock and rare-rare problems.
-  
-  // arguments: <number of cells> <left height> <right height> <left impulse> <right impulse>
-  
-  // number of cells in x- and y-direction
-  t_idx  l_nx = 0;
-  t_idx  l_ny = 1;
-  t_real l_heightLeft = 10;
-  t_real l_heightRight = 5;
-  t_real l_impulseLeft = 0;
-  t_real l_impulseRight = 0;
-  t_real l_cellSizeMeters = 1;
-  t_idx  l_numTimesteps = 1000;
-  t_idx  l_numOutputSteps = 100;
+std::string trim(std::string l_s) {// somehow not part of the C++ standard
+  auto l_whitespace = " \t\n\r\f\v";
+  auto l_i0 = l_s.find_first_not_of(l_whitespace);
+  if(l_i0 == std::string::npos) return "";
+  auto l_i1 = l_s.find_last_not_of(l_whitespace) + 1;
+  return l_s.substr(l_i0, l_i1 - l_i0);
+}
 
+std::map<std::string, std::string> readConfig(std::string i_fileName) {
+  
+  std::map<std::string, std::string> l_config;
+  
+  std::ifstream l_stream(i_fileName, std::ios::in);
+  if(!l_stream.is_open()){
+    return l_config;
+  }
+  
+  std::string l_line;
+  while(getline(l_stream, l_line)) {
+    auto separator = l_line.find(":");
+    if(separator != std::string::npos){
+      auto j = separator + 1;
+      std::string l_key   = trim(l_line.substr(0, separator));
+      std::string l_value = trim(l_line.substr(j, l_line.size() - j));
+      l_config[l_key] = l_value;
+    }
+  }
+  
+  l_stream.close(); 
+  
+  return l_config;
+  
+}
+
+bool readBoolean(std::map<std::string, std::string> &i_config, std::string i_key, bool i_defaultValue) {
+  if(i_config.count(i_key) == 0) return i_defaultValue;
+  auto l_v = i_config[i_key];
+  return l_v == "1" || strcasecmp(l_v.c_str(), "true") == 0;
+}
+
+t_idx readInt(std::map<std::string, std::string> &i_config, std::string i_key, t_idx i_defaultValue) {
+  if(i_config.count(i_key) == 0) return i_defaultValue;
+  return (t_idx) std::stol(i_config[i_key]);
+}
+
+t_real readFloat(std::map<std::string, std::string> &i_config, std::string i_key, t_real i_defaultValue) {
+  if(i_config.count(i_key) == 0) return i_defaultValue;
+  return (t_real) std::stof(i_config[i_key]);
+}
+
+int main( int i_argc, char *i_argv[] ) {
+  
   std::cout << "####################################" << std::endl;
   std::cout << "### Tsunami Lab                  ###" << std::endl;
   std::cout << "###                              ###" << std::endl;
   std::cout << "### https://scalable.uni-jena.de ###" << std::endl;
   std::cout << "####################################" << std::endl;
-
-  if( i_argc < 2 ) {
+  
+  if( i_argc != 2 ) {
     std::cerr << "invalid number of arguments, usage:" << std::endl;
-    std::cerr << "  ./build/tsunami_lab N_CELLS_X HEIGHT_LEFT HEIGHT_RIGHT IMPULSE_LEFT IMPULSE_RIGHT" << std::endl;
-    std::cerr << "    where" << std::endl;
-    std::cerr << "      N_CELLS_X is the number of cells in x-direction," << std::endl;
-    std::cerr << "      HEIGHT_LEFT is the height of the water on the left half, default = 10," << std::endl;
-    std::cerr << "      HEIGHT_RIGHT is the height of the water on the right half, default = 5," << std::endl;
-    std::cerr << "      IMPULSE_LEFT is the impulse on the left side, default = 0," << std::endl;
-    std::cerr << "      IMPULSE_RIGHT is the impulse on the right side, default = 0." << std::endl;
+    std::cerr << "  ./build/tsunami_lab YAML_CONFIG_FILE" << std::endl;
+    std::cerr << "    where YAML_CONFIG_FILE is a file containing the runtime configuration as yaml" << std::endl;
     return EXIT_FAILURE;
-  } else {
-    l_nx = atoi( i_argv[1] );
-    if( l_nx < 1 ) {
-      std::cerr << "invalid number of cells" << std::endl;
-      return EXIT_FAILURE;
-    }
-    if(i_argc > 2) l_heightLeft   = atof(i_argv[2]);
-    if(i_argc > 3) l_heightRight  = atof(i_argv[3]);
-    if(i_argc > 4) l_impulseLeft  = atof(i_argv[4]);
-    if(i_argc > 5) l_impulseRight = atof(i_argv[5]);
   }
   
-  // construct setup
-  tsunami_lab::setups::Discontinuity1d l_setup( l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_nx / 2 );
+  auto l_config = readConfig(i_argv[1]);
+  // if there are more params from the console, we could add them to the config as well
+  
+  std::vector<tsunami_lab::io::Station> l_stations;
+  tsunami_lab::setups::Setup* l_setup = nullptr;
+  
+  // many setups share similar setup information, so just request them all at once;
+  // it should not matter for performance, as this all will be done within 1ms.
+  t_idx  l_nx              =   readInt(l_config, "nx",  1);
+  t_idx  l_ny              =   readInt(l_config, "ny",  1);
+  t_real l_heightLeft      = readFloat(l_config, "hl", 10);
+  t_real l_heightRight     = readFloat(l_config, "hr",  5);
+  t_real l_impulseLeft     = readFloat(l_config, "hul", 0);
+  t_real l_impulseRight    = readFloat(l_config, "hur", 0);
+  t_real l_bathymetryLeft  = readFloat(l_config, "bl", -1);
+  t_real l_bathymetryRight = readFloat(l_config, "br", -1);
+  t_real l_splitPositionX  = readFloat(l_config, "splitPositionX", l_nx / 2);
+  t_real l_splitPositionY  = readFloat(l_config, "splitPositionY", l_ny / 2);
+  t_real l_damRadius       = readFloat(l_config, "damRadius", l_nx / 4);
+  t_real l_cellSizeMeters  = readFloat(l_config, "cellSize", 1);// size of a single cell in meters
+  t_idx  l_numTimesteps    =   readInt(l_config, "maxSteps", std::numeric_limits<t_idx>::max());// max number of simulation timesteps
+  t_real l_maxDuration     = readFloat(l_config, "maxDuration", std::numeric_limits<t_real>::infinity());// max simulation time in seconds
+  t_idx  l_numOutputSteps  =   readInt(l_config, "outputSteps", l_numTimesteps);// how many timesteps shall be written to disk; default = every step
+  t_idx  l_outputStepSize  =   readInt(l_config, "outputStepSize", 1);// n = every nth field is written to disk; saves storage space
+  t_real l_scale           = readFloat(l_config, "scale", 1);// scales the setup for accuracy or performance
+  
+  // we could/should write a few warnings to console, if any of these happen
+  if(l_nx < 1) l_nx = 1;
+  if(l_ny < 1) l_ny = 1;
+  if(l_outputStepSize < 1) l_outputStepSize = 1;
+  if(l_heightLeft < 0) l_heightLeft = 0;
+  if(l_heightRight < 0) l_heightRight = 0;
+  if(l_cellSizeMeters < 0) l_cellSizeMeters = 1;
+  
+  if(l_numTimesteps == std::numeric_limits<t_idx>::max() && l_maxDuration == std::numeric_limits<t_real>::infinity()){
+    std::cerr << "you need to specify a time limit or timestep limit (maxDuration, maxSteps)" << std::endl;
+    return EXIT_FAILURE;
+  }
+  
+  if(l_config.count("stations") > 0) {
+    std::string l_stationsFile = l_config["stations"];
+    t_real l_delayBetweenRecords = readFloat(l_config, "delayBetweenRecords", 1);
+    auto l_stationData = tsunami_lab::io::Csv::read(l_stationsFile);
+    auto l_x     = tsunami_lab::io::Csv::findColumn(l_stationData, "x");
+    auto l_y     = tsunami_lab::io::Csv::findColumn(l_stationData, "y");
+    auto l_names = tsunami_lab::io::Csv::findColumn(l_stationData, "name");
+    for(t_idx i=0;i<l_x.size();i++){
+      tsunami_lab::io::Station l_station((t_idx) l_x[i], (t_idx) l_y[i], std::to_string((int) l_names[i]), l_delayBetweenRecords);
+      l_stations.push_back(l_station);
+    }
+  }
+  
+  std::string l_setupName = "Discontinuity1d";
+  if(l_config.count("setup") > 0) l_setupName = l_config["setup"];
+  
+  // must stay in scope; I don't have a better solution currently; maybe the value could be moved into setup
+  // a copy shouldn't be expensive compared to our simulation and writing the results to disk
+  std::vector<t_real> l_heights;
+  
+  // C++ doesn't have switch-case for strings? :/
+  if(
+    l_setupName == "DamBreak" ||
+    l_setupName == "DamBreak1d"
+  ) {
+    l_setup = new tsunami_lab::setups::DamBreak1d(l_heightLeft, l_heightRight, l_splitPositionX);
+  } else if(
+    l_setupName == "DamBreakCircle" ||
+    l_setupName == "DamBreak2d"
+  ) {
+    l_setup = new tsunami_lab::setups::DamBreak2d(l_heightLeft, l_heightRight, l_splitPositionX, l_splitPositionY, l_damRadius);
+  } else if(
+    l_setupName == "Discontinuity1d" ||
+    l_setupName == "Discontinuity"
+  ){
+    l_setup = new tsunami_lab::setups::Discontinuity1d(l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_bathymetryLeft, l_bathymetryRight, l_splitPositionX);
+  } else if(
+    l_setupName == "Track" || 
+    l_setupName == "Tsunami"
+  ) {
+    if(l_config.count("setupFile") > 0){
+      
+      // load the data from the csv file
+      auto l_loadedData = tsunami_lab::io::Csv::read(l_config["setupFile"]);
+      
+      // here we probably copy; this potentially could be optimized
+      auto l_xs = tsunami_lab::io::Csv::findColumn(l_loadedData, "track_location");
+      l_heights = tsunami_lab::io::Csv::findColumn(l_loadedData, "height");
+      
+      if(l_xs.size() < 1){
+        std::cerr << "did not find position data in track file" << std::endl;
+        return EXIT_FAILURE;
+      } else if(l_heights.size() < 1){
+        std::cerr << "did not find bathymetry data in track file" << std::endl;
+        return EXIT_FAILURE;
+      }
+      
+      l_cellSizeMeters = (l_xs.back() - l_xs.front()) / (l_xs.size() - 1) / l_scale;
+      
+      l_nx = l_xs.size() * l_scale - 2;// 2 = ghost cells
+      l_ny = 1;// it's just a 1d simulation
+      
+      t_real l_displacementStart = readFloat(l_config, "displacementStart", 175000) / l_cellSizeMeters;
+      t_real l_displacementEnd   = readFloat(l_config, "displacementEnd",   250000) / l_cellSizeMeters;
+      t_real l_displacement      = readFloat(l_config, "displacement", 10);
+      
+      // construct setup
+      l_setup = new tsunami_lab::setups::TsunamiEvent1d(l_heights.data(), l_heights.size(), 1/l_scale, l_displacementStart, l_displacementEnd, l_displacement);
+      
+    } else {
+      std::cerr << "missing parameter 'setupFile' for setup type Track" << std::endl;
+      return EXIT_FAILURE;
+    }
+  } else if(
+    l_setupName == "Subcritical" ||
+    l_setupName == "SubcriticalFlow" ||
+    l_setupName == "SubcriticalFlow1d"
+  ) {
+    l_nx = (t_idx) (25 * l_scale);
+    l_cellSizeMeters = 1 / l_scale;
+    l_setup = new tsunami_lab::setups::SubcriticalFlow1d();
+  } else if(
+    l_setupName == "Supercritical" ||
+    l_setupName == "SupercriticalFlow" ||
+    l_setupName == "SupercriticalFlow1d"
+  ) {
+    l_nx = (t_idx) (25 * l_scale);
+    l_cellSizeMeters = 1 / l_scale;
+    l_setup = new tsunami_lab::setups::SupercriticalFlow1d();
+  } else {
+    std::cerr << "unknown/invalid setup type \"" << l_setupName << "\"" << std::endl;
+    return EXIT_FAILURE;
+  }
   
   // run simulation
-  tsunami_lab::simulation::Simulation::run( l_nx, l_ny, l_setup, 1, l_cellSizeMeters, l_numTimesteps, 1, l_numOutputSteps );
+  tsunami_lab::simulation::Simulation::run(l_nx, l_ny, *l_setup, 1/l_scale, l_cellSizeMeters, l_numTimesteps, l_maxDuration, l_outputStepSize, l_numOutputSteps, l_stations);
   
-  std::cout << "finished, exiting" << std::endl;
+  delete l_setup;
+  
   return EXIT_SUCCESS;
 }
