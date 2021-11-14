@@ -48,3 +48,11 @@ When a less extreme shallowness is used, the water behaves properly. Interesting
 Stations
 ========
 
+For properly loading the configuration files, I didn't want to switch to XML files, because YAML files look user friendlier. So I tried to use Yaml-Cpp `https://github.com/jbeder/yaml-cpp`_. Unfortunately, it is a CMake project and ours is a SCons project. When I added the include folder to SCons, it was missing a mysterious "dll.h", which was not part of the repository. So I executed CMake and found out that it generates the dll.h dynamically as some form of configuration.
+
+To fix that, I forked the original project, added the missing dll.h, and changed the submodule to my fork.
+
+
+To compare the 1d and 2d solver, I created the configurations config/stations1d.yaml and config/stations2d.yaml. The results are similar, but not the same. The 2d sample seems to oscillate longer. It calms at t=14s, while the 1d calms already at 8s. Anyways, this doesn't mean that my solver is incorrect. The waves flow out as expected, no side seems different from another, and neither 1d nor 2d solutions are correct, and result in a water height of 5m at the end. The 1d sample just is a little closer to the true result (4.93m instead of 4.89m).
+
+

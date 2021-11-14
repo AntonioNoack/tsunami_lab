@@ -1,5 +1,5 @@
 ##
-# @author Alexander Breuer (alex.breuer AT uni-jena.de)
+# @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
 # 
 # @section LICENSE
 # Copyright 2020, Friedrich Schiller University Jena
@@ -16,6 +16,8 @@
 # Entry-point for builds.
 ##
 import SCons
+import os
+import inspect
 
 print( '###################################' )
 print( '### Tsunami Lab                 ###' )
@@ -76,6 +78,9 @@ if 'san' in  env['mode']:
 # add Catch2
 env.Append( CXXFLAGS = [ '-Isubmodules/Catch2/single_include' ] )
 
+# add Yaml-Cpp
+env.Append( CXXFLAGS = [ '-Isubmodules/YamlCpp2/include' ] )
+
 # get source files
 VariantDir( variant_dir = 'build/src',
             src_dir     = 'src' )
@@ -83,6 +88,16 @@ VariantDir( variant_dir = 'build/src',
 env.sources = []
 env.tests = []
 env.tsunami1d = []
+
+src_file_path = inspect.getfile(lambda: None)
+yamlcpp_src = os.path.dirname(src_file_path) + "/submodules/YamlCpp2/src"
+for file in os.listdir(yamlcpp_src):
+  src_file = yamlcpp_src + "/" + file
+  if os.path.isfile(src_file):
+    if src_file.endswith(".cpp"):
+      env.sources.append(src_file)
+  else:
+    pass
 
 Export('env')
 SConscript( 'build/src/SConscript' )

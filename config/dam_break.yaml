@@ -3,4 +3,20 @@ hl: 10
 hr: 1
 maxSteps: 100
 maxDuration: 100
-stations: config/dam_break_stations.csv
+delayBetweenRecords: 0
+stations:
+  - name: db-10
+    x: 10
+    y: 10
+  - name: db-30
+    x: 30
+    y: 10
+  - name: db-50
+    x: 50
+    y: 10
+  - name: db-70
+    x: 70
+    y: 10
+  - name: db-90
+    x: 90
+    y: 10

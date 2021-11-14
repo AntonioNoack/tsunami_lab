@@ -184,13 +184,15 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation1d::computeMaxTimestep(
   
   for(t_idx l_x=l_startIndex;l_x<l_endIndex;l_x++){
     t_real l_height = l_h[l_x], l_height0 = l_height;
-    // worst case consideration for height; alternatively, we could look at the worst case velocity
-    l_height = std::max(l_height, l_h[l_x-1]);
-    l_height = std::max(l_height, l_h[l_x+1]);
-    t_real l_impulse = l_hu[l_x];
-    t_real l_velocity = std::abs(l_impulse) / l_height0;
-    t_real l_expectedVelocity = l_velocity + std::sqrt(l_gravity * l_height);
-    l_maxVelocity = std::max(l_maxVelocity, l_expectedVelocity);
+    if(l_height > 0){
+      // worst case consideration for height; alternatively, we could look at the worst case velocity
+      l_height = std::max(l_height, l_h[l_x-1]);
+      l_height = std::max(l_height, l_h[l_x+1]);
+      t_real l_impulse = l_hu[l_x];
+      t_real l_velocity = std::abs(l_impulse) / l_height0;
+      t_real l_expectedVelocity = l_velocity + std::sqrt(l_gravity * l_height);
+      l_maxVelocity = std::max(l_maxVelocity, l_expectedVelocity);
+    }
   }
   
   return 0.5 * i_cellSizeMeters / l_maxVelocity;

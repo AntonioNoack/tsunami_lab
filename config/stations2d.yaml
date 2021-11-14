@@ -1,0 +1,28 @@
+hl: 10
+hr: 5
+nx: 51
+ny: 51
+maxDuration: 100
+damRadius: 15
+delayBetweenRecords: 1
+cflFactor: 0.5
+setup: DamBreak2d
+stations:
+  - name: 2d-0
+    x: 5
+    y: 26
+  - name: 2d-1
+    x: 15
+    y: 26
+  - name: 2d-2
+    x: 15
+    y: 26
+  - name: 2d-3
+    x: 25
+    y: 26
+  - name: 2d-4
+    x: 35
+    y: 26
+  - name: 2d-5
+    x: 45
+    y: 26

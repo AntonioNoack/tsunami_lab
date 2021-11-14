@@ -28,7 +28,6 @@ l_sources = [ 'solvers/Roe.cpp',
               'setups/TsunamiEvent1d.cpp',
               'setups/SubcriticalFlow1d.cpp',
               'setups/SupercriticalFlow1d.cpp',
-              'simulation/Simulation.cpp',
               'io/Csv.cpp',
               'io/Station.cpp' ]
 

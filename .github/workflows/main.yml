@@ -1,5 +1,5 @@
 ##
-# @author Alexander Breuer (alex.breuer AT uni-jena.de)
+# @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
 # 
 # @section LICENSE
 # Copyright 2020, Friedrich Schiller University Jena
@@ -49,19 +49,19 @@ jobs:
         run: |
           scons mode=debug+san
           ./build/tests
-          ./build/tsunami_lab 25
+          ./build/tsunami_lab config/dam_break.yaml
           scons mode=release+san
           ./build/tests
-          ./build/tsunami_lab 500
+          ./build/tsunami_lab config/dam_break.yaml
 
       - name: Valgrind
         run: |
           scons mode=debug
           valgrind ./build/tests
-          valgrind ./build/tsunami_lab 25
+          valgrind ./build/tsunami_lab config/dam_break.yaml
 
       - name: Release
         run: |
           scons
           ./build/tests
-          ./build/tsunami_lab 500
+          ./build/tsunami_lab config/dam_break.yaml

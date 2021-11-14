@@ -1,0 +1,27 @@
+hl: 10
+hr: 5
+nx: 51
+ny: 1
+maxDuration: 100
+damRadius: 15
+delayBetweenRecords: 1
+setup: DamBreak2d
+stations:
+  - name: 1d-0
+    x: 5
+    y: 0
+  - name: 1d-1
+    x: 15
+    y: 0
+  - name: 1d-2
+    x: 15
+    y: 0
+  - name: 1d-3
+    x: 25
+    y: 0
+  - name: 1d-4
+    x: 35
+    y: 0
+  - name: 1d-5
+    x: 45
+    y: 0

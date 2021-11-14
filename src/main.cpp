@@ -21,7 +21,10 @@
 #include <fstream>
 #include <limits> // infinity, max int
 
-#include "simulation/Simulation.h"
+#include <yaml-cpp/yaml.h>
+
+#include "patches/WavePropagation1d.h"
+#include "patches/WavePropagation2d.h"
 #include "setups/Discontinuity1d.h"
 #include "setups/DamBreak1d.h"
 #include "setups/DamBreak2d.h"
@@ -42,46 +45,19 @@ std::string trim(std::string l_s) {// somehow not part of the C++ standard
   return l_s.substr(l_i0, l_i1 - l_i0);
 }
 
-std::map<std::string, std::string> readConfig(std::string i_fileName) {
-  
-  std::map<std::string, std::string> l_config;
-  
-  std::ifstream l_stream(i_fileName, std::ios::in);
-  if(!l_stream.is_open()){
-    return l_config;
-  }
-  
-  std::string l_line;
-  while(getline(l_stream, l_line)) {
-    auto separator = l_line.find(":");
-    if(separator != std::string::npos){
-      auto j = separator + 1;
-      std::string l_key   = trim(l_line.substr(0, separator));
-      std::string l_value = trim(l_line.substr(j, l_line.size() - j));
-      l_config[l_key] = l_value;
-    }
-  }
-  
-  l_stream.close(); 
-  
-  return l_config;
-  
+bool readBoolean(YAML::Node &i_config, std::string i_key, bool i_defaultValue) {
+  if(!i_config[i_key]) return i_defaultValue;
+  return i_config[i_key].as<bool>();
 }
 
-bool readBoolean(std::map<std::string, std::string> &i_config, std::string i_key, bool i_defaultValue) {
-  if(i_config.count(i_key) == 0) return i_defaultValue;
-  auto l_v = i_config[i_key];
-  return l_v == "1" || strcasecmp(l_v.c_str(), "true") == 0;
+t_idx readInt(YAML::Node &i_config, std::string i_key, t_idx i_defaultValue) {
+  if(!i_config[i_key]) return i_defaultValue;
+  return i_config[i_key].as<t_idx>();
 }
 
-t_idx readInt(std::map<std::string, std::string> &i_config, std::string i_key, t_idx i_defaultValue) {
-  if(i_config.count(i_key) == 0) return i_defaultValue;
-  return (t_idx) std::stol(i_config[i_key]);
-}
-
-t_real readFloat(std::map<std::string, std::string> &i_config, std::string i_key, t_real i_defaultValue) {
-  if(i_config.count(i_key) == 0) return i_defaultValue;
-  return (t_real) std::stof(i_config[i_key]);
+t_real readFloat(YAML::Node &i_config, std::string i_key, t_real i_defaultValue) {
+  if(!i_config[i_key]) return i_defaultValue;
+  return i_config[i_key].as<t_real>();
 }
 
 int main( int i_argc, char *i_argv[] ) {
@@ -99,7 +75,7 @@ int main( int i_argc, char *i_argv[] ) {
     return EXIT_FAILURE;
   }
   
-  auto l_config = readConfig(i_argv[1]);
+  auto l_config = YAML::LoadFile(i_argv[1]);
   // if there are more params from the console, we could add them to the config as well
   
   std::vector<tsunami_lab::io::Station> l_stations;
@@ -115,11 +91,11 @@ int main( int i_argc, char *i_argv[] ) {
   t_real l_impulseRight    = readFloat(l_config, "hur", 0);
   t_real l_bathymetryLeft  = readFloat(l_config, "bl", -1);
   t_real l_bathymetryRight = readFloat(l_config, "br", -1);
-  t_real l_splitPositionX  = readFloat(l_config, "splitPositionX", l_nx / 2);
-  t_real l_splitPositionY  = readFloat(l_config, "splitPositionY", l_ny / 2);
+  t_real l_splitPositionX  = readFloat(l_config, "splitPositionX", l_nx * 0.5);
+  t_real l_splitPositionY  = readFloat(l_config, "splitPositionY", l_ny * 0.5);
   t_real l_damRadius       = readFloat(l_config, "damRadius", l_nx / 4);
   t_real l_cellSizeMeters  = readFloat(l_config, "cellSize", 1);// size of a single cell in meters
-  t_idx  l_numTimesteps    =   readInt(l_config, "maxSteps", std::numeric_limits<t_idx>::max());// max number of simulation timesteps
+  t_idx  l_maxTimesteps    =   readInt(l_config, "maxSteps", std::numeric_limits<t_idx>::max());// max number of simulation timesteps
   t_real l_maxDuration     = readFloat(l_config, "maxDuration", std::numeric_limits<t_real>::infinity());// max simulation time in seconds
   t_real l_outputPeriod    = readFloat(l_config, "outputPeriod", 1);// every n th second, a result file will be written
   t_idx  l_outputStepSize  =   readInt(l_config, "outputStepSize", 1);// n = every nth field is written to disk; saves storage space
@@ -133,26 +109,26 @@ int main( int i_argc, char *i_argv[] ) {
   if(l_heightRight < 0) l_heightRight = 0;
   if(l_cellSizeMeters < 0) l_cellSizeMeters = 1;
   
-  if(l_numTimesteps == std::numeric_limits<t_idx>::max() && l_maxDuration == std::numeric_limits<t_real>::infinity()){
+  if(l_maxTimesteps == std::numeric_limits<t_idx>::max() && l_maxDuration == std::numeric_limits<t_real>::infinity()){
     std::cerr << "you need to specify a time limit or timestep limit (maxDuration, maxSteps)" << std::endl;
     return EXIT_FAILURE;
   }
   
-  if(l_config.count("stations") > 0) {
-    std::string l_stationsFile = l_config["stations"];
+  if(l_config["stations"]) {
+    auto   l_stationData = l_config["stations"].as<std::vector<YAML::Node>>();
     t_real l_delayBetweenRecords = readFloat(l_config, "delayBetweenRecords", 1);
-    auto l_stationData = tsunami_lab::io::Csv::read(l_stationsFile);
-    auto l_x     = tsunami_lab::io::Csv::findColumn(l_stationData, "x");
-    auto l_y     = tsunami_lab::io::Csv::findColumn(l_stationData, "y");
-    auto l_names = tsunami_lab::io::Csv::findColumn(l_stationData, "name");
-    for(t_idx i=0;i<l_x.size();i++){
-      tsunami_lab::io::Station l_station((t_idx) l_x[i], (t_idx) l_y[i], std::to_string((int) l_names[i]), l_delayBetweenRecords);
-      l_stations.push_back(l_station);
+    for(t_idx i=0;i<l_stationData.size();i++){
+      auto l_station = l_stationData[i];
+      std::string l_name = l_station["name"].as<std::string>();
+      t_idx       l_x    = l_station["x"].as<t_idx>();
+      t_idx       l_y    = l_station["y"].as<t_idx>();
+      tsunami_lab::io::Station l_station1(l_x, l_y, l_name, l_delayBetweenRecords);
+      l_stations.push_back(l_station1);
     }
   }
   
   std::string l_setupName = "Discontinuity1d";
-  if(l_config.count("setup") > 0) l_setupName = l_config["setup"];
+  if(l_config["setup"]) l_setupName = l_config["setup"].as<std::string>();
   else std::cout << "using default setup: " << l_setupName << std::endl;
   
   // must stay in scope; I don't have a better solution currently; maybe the value could be moved into setup
@@ -170,7 +146,7 @@ int main( int i_argc, char *i_argv[] ) {
     l_setupName == "DamBreak2d"
   ) {
     auto l_dambreak2d = new tsunami_lab::setups::DamBreak2d(l_heightLeft, l_heightRight, l_splitPositionX, l_splitPositionY, l_damRadius);
-    if(l_config.count("obstacleBathymetry") > 0) {
+    if(l_config["obstacleBathymetry"]) {
       // an obstacle should be defined
       l_dambreak2d->setObstacle(
         readFloat(l_config, "obstacleX0", 0),
@@ -180,7 +156,7 @@ int main( int i_argc, char *i_argv[] ) {
         readFloat(l_config, "obstacleBathymetry", 0)
       );
     }
-	l_setup = l_dambreak2d;
+    l_setup = l_dambreak2d;
   } else if(
     l_setupName == "Discontinuity1d" ||
     l_setupName == "Discontinuity"
@@ -190,10 +166,10 @@ int main( int i_argc, char *i_argv[] ) {
     l_setupName == "Track" || 
     l_setupName == "Tsunami"
   ) {
-    if(l_config.count("setupFile") > 0){
+    if(l_config["setupFile"]){
       
       // load the data from the csv file
-      auto l_loadedData = tsunami_lab::io::Csv::read(l_config["setupFile"]);
+      auto l_loadedData = tsunami_lab::io::Csv::read(l_config["setupFile"].as<std::string>());
       
       // here we probably copy; this potentially could be optimized
       auto l_xs = tsunami_lab::io::Csv::findColumn(l_loadedData, "track_location");
@@ -223,7 +199,7 @@ int main( int i_argc, char *i_argv[] ) {
       std::cerr << "missing parameter 'setupFile' for setup type Track" << std::endl;
       return EXIT_FAILURE;
     }
-  } else if(
+  } else if( 
     l_setupName == "Subcritical" ||
     l_setupName == "SubcriticalFlow" ||
     l_setupName == "SubcriticalFlow1d"
@@ -245,7 +221,94 @@ int main( int i_argc, char *i_argv[] ) {
   }
   
   // run simulation
-  tsunami_lab::simulation::Simulation::run(l_nx, l_ny, *l_setup, 1/l_scale, l_cellSizeMeters, l_numTimesteps, l_maxDuration, l_outputStepSize, l_outputPeriod, l_stations);
+  std::cout << "runtime configuration" << std::endl;
+  std::cout << "  max timesteps:                  " << l_maxTimesteps << std::endl;
+  std::cout << "  max duration:                   " << l_maxDuration << std::endl;
+  std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
+  std::cout << "  number of cells in y-direction: " << l_ny << std::endl;
+  std::cout << "  cell size (meters):             " << l_cellSizeMeters << std::endl;
+  std::cout << "  number of stations:             " << l_stations.size() << std::endl;
+  
+  for(t_idx l_i=0;l_i<1000;l_i++){
+    // delete all old files;
+    // ParaView caused me enough headaches
+    std::string l_path = "solution_" + std::to_string(l_i) + ".csv";
+    remove(l_path.c_str());
+  }
+
+  // construct solver
+  tsunami_lab::patches::WavePropagation* l_waveProp;
+  if(l_ny <= 1){
+    l_waveProp = new tsunami_lab::patches::WavePropagation1d(l_nx, l_setup, l_scale);
+  } else {
+    l_waveProp = new tsunami_lab::patches::WavePropagation2d(l_nx, l_ny, l_setup, l_scale, l_scale, readFloat(l_config, "cflFactor", 0.45));
+  }
+
+  // set up print control
+  t_idx  l_nOut = 0;
+  t_real l_timestep;
+  
+  double l_time = 0;
+
+  std::cout << "entering time loop" << std::endl;
+
+  // iterate over time
+  t_idx l_lastOutputIndex = -1;
+  t_idx l_timeStepIndex = 0;
+  for(; l_timeStepIndex < l_maxTimesteps && l_time < l_maxDuration; l_timeStepIndex++ ){
+
+    // index, which frame we'd need to print theoretically
+    // if there are more frames requested than simulated, we just skip some
+    t_idx l_outputIndex = (t_idx) (l_time / l_outputPeriod);
+    if(l_lastOutputIndex != l_outputIndex) {
+      l_lastOutputIndex = l_outputIndex;
+      
+      std::cout << "  simulation time: " << l_time << ", #time steps: "<< l_timeStepIndex << std::endl;
+
+      std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
+      std::cout << "  writing wave field to " << l_path << std::endl;
+
+      std::ofstream l_file(l_path, std::ios::out);
+      tsunami_lab::io::Csv::write( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file );
+      l_file.close();
+      l_nOut++;
+    }
+    
+    // update recording stations, if there are any
+    if(!l_stations.empty() && l_stations[0].needsUpdate( l_time )) {
+      for(auto &l_station : l_stations) {
+        l_station.recordState( *l_waveProp, l_time );
+      }
+    }
+
+    l_timestep = l_waveProp->computeMaxTimestep( l_cellSizeMeters );
+    l_waveProp->setGhostOutflow();
+    
+    t_real l_scaling = l_timestep / l_cellSizeMeters;
+    l_waveProp->timeStep( l_scaling );
+
+    l_time += l_timestep;
+  }
+  
+  std::cout << "finished time loop" << std::endl;
+  
+  // print last state
+  std::cout << "  simulation time: " << l_time << ", #time steps: "<< l_timeStepIndex << std::endl;
+
+  std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
+  std::cout << "  writing wave field to " << l_path << std::endl;
+
+  std::ofstream l_file(l_path, std::ios::out);
+  tsunami_lab::io::Csv::write( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file );
+  l_file.close();
+  
+  for(auto &l_station : l_stations){
+    l_station.write();
+  }
+  
+  std::cout << "finished writing last state" << std::endl;
+  
+  delete l_waveProp;
   
   delete l_setup;
   

@@ -62,6 +62,27 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   initWithSetup( i_setup, i_scaleX, i_scaleY );
 }
 
+tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_idx i_nCellsY, tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY, t_real i_cflFactor ) {
+  
+  m_cflFactor = i_cflFactor;
+  
+  m_nCellsX = i_nCellsX;
+  m_nCellsY = i_nCellsY;
+  
+  m_nCells = (m_nCellsX+2) * (m_nCellsY+2);
+
+  // allocate memory including a single ghost cell on all sides
+  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
+    m_h [l_st] = new t_real[m_nCells];
+    m_hu[l_st] = new t_real[m_nCells];
+    m_hv[l_st] = new t_real[m_nCells];
+  }
+  
+  m_bathymetry = new t_real[m_nCells];
+
+  initWithSetup( i_setup, i_scaleX, i_scaleY );
+}
+
 void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY ) {
   for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
     t_real* l_h  = m_h [l_st];
@@ -236,15 +257,17 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation2d::computeMaxTimestep(
     t_idx l_i = l_iy * l_stride + 1;// +1, because we start iterating at l_ix = 1
     for( t_idx l_ix = 1; l_ix <= m_nCellsX; l_ix++, l_i++){
       t_real l_height = l_h[l_i], l_height0 = l_height;
-      // worst case consideration for height; alternatively, we could look at the worst case velocity
-      l_height = std::max(l_height, l_h[l_i-1]);// left
-      l_height = std::max(l_height, l_h[l_i+1]);// right
-      l_height = std::max(l_height, l_h[l_i-l_stride]);// top
-      l_height = std::max(l_height, l_h[l_i+l_stride]);// bottom
-      t_real l_impulse = std::max(std::abs(l_hu[l_i]), std::abs(l_hv[l_i]));
-      t_real l_velocity = l_impulse / l_height0;
-      t_real l_expectedVelocity = l_velocity + std::sqrt(l_gravity * l_height);
-      l_maxVelocity = std::max(l_maxVelocity, l_expectedVelocity);
+      if(l_height > 0){
+        // worst case consideration for height; alternatively, we could look at the worst case velocity
+        l_height = std::max(l_height, l_h[l_i-1]);// left
+        l_height = std::max(l_height, l_h[l_i+1]);// right
+        l_height = std::max(l_height, l_h[l_i-l_stride]);// top
+        l_height = std::max(l_height, l_h[l_i+l_stride]);// bottom
+        t_real l_impulse = std::max(std::abs(l_hu[l_i]), std::abs(l_hv[l_i]));
+        t_real l_velocity = l_impulse / l_height0;
+        t_real l_expectedVelocity = l_velocity + std::sqrt(l_gravity * l_height);
+        l_maxVelocity = std::max(l_maxVelocity, l_expectedVelocity);
+      }
     }
   }
   

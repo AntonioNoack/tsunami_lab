@@ -69,6 +69,18 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * @param i_scaleY scale for the scene in y direction
      **/
     WavePropagation2d( t_idx i_nCellsX, t_idx i_nCellsY, tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY );
+    
+    /**
+     * Constructs the 1d wave propagation solver and applies the setup.
+     *
+     * @param i_nCellsX number of cells on the x axis.
+     * @param i_nCellsY number of cells on the y axis.
+     * @param i_setup setup for cell initialization.
+     * @param i_scaleX scale for the scene in x direction; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
+     * @param i_scaleY scale for the scene in y direction.
+	 * @param i_cflFactor cfl factor, must be <= 0.5.
+     **/
+    WavePropagation2d( t_idx i_nCellsX, t_idx i_nCellsY, tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY, t_real i_cflFactor );
 
     /**
      * Destructor which frees all allocated memory.
