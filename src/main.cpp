@@ -121,7 +121,7 @@ int main( int i_argc, char *i_argv[] ) {
   t_real l_cellSizeMeters  = readFloat(l_config, "cellSize", 1);// size of a single cell in meters
   t_idx  l_numTimesteps    =   readInt(l_config, "maxSteps", std::numeric_limits<t_idx>::max());// max number of simulation timesteps
   t_real l_maxDuration     = readFloat(l_config, "maxDuration", std::numeric_limits<t_real>::infinity());// max simulation time in seconds
-  t_idx  l_numOutputSteps  =   readInt(l_config, "outputSteps", l_numTimesteps);// how many timesteps shall be written to disk; default = every step
+  t_real l_outputPeriod    = readFloat(l_config, "outputPeriod", 1);// every n th second, a result file will be written
   t_idx  l_outputStepSize  =   readInt(l_config, "outputStepSize", 1);// n = every nth field is written to disk; saves storage space
   t_real l_scale           = readFloat(l_config, "scale", 1);// scales the setup for accuracy or performance
   
@@ -153,6 +153,7 @@ int main( int i_argc, char *i_argv[] ) {
   
   std::string l_setupName = "Discontinuity1d";
   if(l_config.count("setup") > 0) l_setupName = l_config["setup"];
+  else std::cout << "using default setup: " << l_setupName << std::endl;
   
   // must stay in scope; I don't have a better solution currently; maybe the value could be moved into setup
   // a copy shouldn't be expensive compared to our simulation and writing the results to disk
@@ -168,7 +169,18 @@ int main( int i_argc, char *i_argv[] ) {
     l_setupName == "DamBreakCircle" ||
     l_setupName == "DamBreak2d"
   ) {
-    l_setup = new tsunami_lab::setups::DamBreak2d(l_heightLeft, l_heightRight, l_splitPositionX, l_splitPositionY, l_damRadius);
+    auto l_dambreak2d = new tsunami_lab::setups::DamBreak2d(l_heightLeft, l_heightRight, l_splitPositionX, l_splitPositionY, l_damRadius);
+    if(l_config.count("obstacleBathymetry") > 0) {
+      // an obstacle should be defined
+      l_dambreak2d->setObstacle(
+        readFloat(l_config, "obstacleX0", 0),
+        readFloat(l_config, "obstacleX1", 0), 
+        readFloat(l_config, "obstacleY0", 0),
+        readFloat(l_config, "obstacleY1", 0), 
+        readFloat(l_config, "obstacleBathymetry", 0)
+      );
+    }
+	l_setup = l_dambreak2d;
   } else if(
     l_setupName == "Discontinuity1d" ||
     l_setupName == "Discontinuity"
@@ -233,7 +245,7 @@ int main( int i_argc, char *i_argv[] ) {
   }
   
   // run simulation
-  tsunami_lab::simulation::Simulation::run(l_nx, l_ny, *l_setup, 1/l_scale, l_cellSizeMeters, l_numTimesteps, l_maxDuration, l_outputStepSize, l_numOutputSteps, l_stations);
+  tsunami_lab::simulation::Simulation::run(l_nx, l_ny, *l_setup, 1/l_scale, l_cellSizeMeters, l_numTimesteps, l_maxDuration, l_outputStepSize, l_outputPeriod, l_stations);
   
   delete l_setup;
   

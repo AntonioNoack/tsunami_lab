@@ -25,7 +25,7 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
     m_h [l_st] = new t_real[l_cellCount];
     m_hu[l_st] = new t_real[l_cellCount];
-	m_hv[l_st] = new t_real[l_cellCount];
+    m_hv[l_st] = new t_real[l_cellCount];
   }
   
   m_bathymetry = new t_real[l_cellCount];
@@ -35,7 +35,7 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
     for( t_idx l_ce = 0; l_ce < l_cellCount; l_ce++ ) {
       m_h [l_st][l_ce] = 0;
       m_hu[l_st][l_ce] = 0;
-	  m_hv[l_st][l_ce] = 0;
+      m_hv[l_st][l_ce] = 0;
     }
   }
   for( t_idx l_ce = 0; l_ce < l_cellCount; l_ce++ ) {
@@ -54,7 +54,7 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
     m_h [l_st] = new t_real[m_nCells];
     m_hu[l_st] = new t_real[m_nCells];
-	m_hv[l_st] = new t_real[m_nCells];
+    m_hv[l_st] = new t_real[m_nCells];
   }
   
   m_bathymetry = new t_real[m_nCells];
@@ -68,9 +68,9 @@ void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups
     t_real* l_hu = m_hu[l_st];
     t_real* l_hv = m_hv[l_st];
     for( t_idx l_iy = 0, l_i = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
-      t_real l_y = (l_iy - 1) * i_scaleX;
+      t_real l_y = (l_iy - 1) * i_scaleY;
       for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
-        t_real l_x = (l_ix - 1) * i_scaleY;
+        t_real l_x = (l_ix - 1) * i_scaleX;
         l_h [l_i] = i_setup->getHeight(    l_x, l_y );
         l_hu[l_i] = i_setup->getMomentumX( l_x, l_y );
         l_hv[l_i] = i_setup->getMomentumY( l_x, l_y );
@@ -79,9 +79,9 @@ void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups
   }
   
   for( t_idx l_iy = 0, l_i = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
-    t_real l_y = (l_iy - 1) * i_scaleX;
+    t_real l_y = (l_iy - 1) * i_scaleY;
     for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
-      t_real l_x = (l_ix - 1) * i_scaleY;
+      t_real l_x = (l_ix - 1) * i_scaleX;
       m_bathymetry[l_i] = i_setup->getBathymetry( l_x, l_y );
     }
   }
@@ -144,6 +144,20 @@ void tsunami_lab::patches::WavePropagation2d::internalUpdate( t_real i_scaling, 
     l_huNew[l_ceR] -= i_scaling * l_netUpdatesR[1];
   } else l_huNew[l_ceR] = l_hNew[l_ceR] = 0;
   
+  // if there is numerical issues, e.g. from very shallow water,
+  // try to keep the simulation running;
+  // this is kind of incorrect, but it's incorrect anyways.
+  // we could print a warning, if that happens
+  if(std::isnan(l_hNew[l_ceL])){
+    l_hNew[l_ceL] = l_hL;
+    l_huNew[l_ceL] = l_huL;
+  }
+  
+  if(std::isnan(l_hNew[l_ceR])){
+    l_hNew[l_ceR] = l_hR;
+    l_huNew[l_ceR] = l_huR;
+  }
+  
 }
 
 void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
@@ -201,7 +215,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
       // determine cell-ids above and below
       t_idx l_ceL = l_ix + l_iy * l_stride;
       t_idx l_ceR = l_ceL + l_stride;
-      internalUpdate( i_scaling, l_ceL, l_ceR, l_hOld, l_huOld, l_hNew, l_huNew );
+      internalUpdate( i_scaling, l_ceL, l_ceR, l_hOld, l_hvOld, l_hNew, l_hvNew );
     }
   }
   
@@ -238,7 +252,7 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation2d::computeMaxTimestep(
   // h/hv may have changed and be incorrect. So be save, and do a smaller step
   
   // in the future, we could cancel the computation and restart, if this step guess failed.
-  return 0.45 * i_cellSizeMeters / l_maxVelocity;
+  return m_cflFactor * i_cellSizeMeters / l_maxVelocity;
   
 }
 
@@ -253,8 +267,8 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   
   // set left boundary
   for(t_idx l_y = 0; l_y < m_nCellsY+2; l_y++){
-	t_idx l_i0 = l_y * l_stride;
-	t_idx l_i1 = l_i0 + 1;
+    t_idx l_i0 = l_y * l_stride;
+    t_idx l_i1 = l_i0 + 1;
     l_b [l_i0] = l_b [l_i1];
     l_h [l_i0] = l_h [l_i1];
     l_hu[l_i0] = l_hu[l_i1];
@@ -263,8 +277,8 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   
   // set right boundary
   for(t_idx l_y = 0; l_y < m_nCellsY+2; l_y++){
-	t_idx l_i0 = m_nCellsX + 1 + l_y * l_stride;
-	t_idx l_i1 = l_i0 - 1;
+    t_idx l_i0 = m_nCellsX + 1 + l_y * l_stride;
+    t_idx l_i1 = l_i0 - 1;
     l_b [l_i0] = l_b [l_i1];
     l_h [l_i0] = l_h [l_i1];
     l_hu[l_i0] = l_hu[l_i1];
@@ -273,8 +287,8 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   
   // set top boundary
   for(t_idx l_x = 0; l_x < m_nCellsX+2; l_x++){
-	t_idx l_i0 = l_x;
-	t_idx l_i1 = l_i0 + l_stride;
+    t_idx l_i0 = l_x;
+    t_idx l_i1 = l_i0 + l_stride;
     l_b [l_i0] = l_b [l_i1];
     l_h [l_i0] = l_h [l_i1];
     l_hu[l_i0] = l_hu[l_i1];
@@ -283,8 +297,8 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   
   // set bottom boundary
   for(t_idx l_x = 0; l_x < m_nCellsX+2; l_x++){
-	t_idx l_i0 = l_x + (m_nCellsY + 1) * l_stride;
-	t_idx l_i1 = l_i0 - l_stride;
+    t_idx l_i0 = l_x + (m_nCellsY + 1) * l_stride;
+    t_idx l_i1 = l_i0 - l_stride;
     l_b [l_i0] = l_b [l_i1];
     l_h [l_i0] = l_h [l_i1];
     l_hu[l_i0] = l_hu[l_i1];

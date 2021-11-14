@@ -7,6 +7,7 @@
 #include <cmath>
 #include <stdio.h>
 #include <iostream>
+#include <stdexcept>
 
 void tsunami_lab::solvers::FWave::inverse2x2(t_real io_matrix[2][2]){
   //            |a b|    |+d -b|       |a b|

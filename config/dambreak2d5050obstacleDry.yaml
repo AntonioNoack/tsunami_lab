@@ -1,0 +1,13 @@
+nx: 100
+ny: 100
+hl: 10
+hr: 5
+damRadius: 10
+maxDuration: 20
+outputDelay: 1
+setup: DamBreak2d
+obstacleBathymetry: 0.1
+obstacleX0: 3
+obstacleX1: 20
+obstacleY0: 10
+obstacleY1: 90

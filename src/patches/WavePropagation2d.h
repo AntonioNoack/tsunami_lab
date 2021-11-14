@@ -19,30 +19,33 @@ namespace tsunami_lab {
 class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
   private:
     
-	//! current index for momentum buffers
-	t_idx m_step = 0;
-	
+    //! current index for momentum buffers
+    t_idx m_step = 0;
+    
     //! number of cells discretizing the computational domain
     t_idx m_nCells = 0;
-	
-	//! number of cells on the x and y axis
-	t_idx m_nCellsX = 0, m_nCellsY;
+    
+    //! number of cells on the x and y axis
+    t_idx m_nCellsX = 0, m_nCellsY;
     
     //! water heights for the current and next time step for all cells
-	//! updated twice per step
+    //! updated twice per step
     t_real * m_h[2] = { nullptr, nullptr };
     
     //! momenta in x direction for the current and next time step for all cells
-	//! updated once per step
+    //! updated once per step
     t_real * m_hu[2] = { nullptr, nullptr };
     
     //! momenta in y direction for the current and next time step for all cells
-	//! updated once per step
+    //! updated once per step
     t_real * m_hv[2] = { nullptr, nullptr };
     
     //! bathymetry in meters for all cells
-	//! currently only updated at the start of simulation
+    //! currently only updated at the start of simulation
     t_real * m_bathymetry = nullptr;
+    
+    //! cfl factor for the 2d case; should be less than 0.5, such that a velocity increase does not violate the cfl condition
+    t_real m_cflFactor = 0.45;
     
     //! if true, use FWave, else use Roe solver
     bool m_useFWaveSolver = true;
@@ -52,7 +55,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * Constructs the 2d wave propagation solver.
      *
      * @param i_nCellsX number of cells on the x axis.
-	 * @param i_nCellsY number of cells on the y axis.
+     * @param i_nCellsY number of cells on the y axis.
      **/
     WavePropagation2d( t_idx i_nCellsX, t_idx i_nCellsY );
     
@@ -60,7 +63,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * Constructs the 1d wave propagation solver and applies the setup.
      *
      * @param i_nCellsX number of cells on the x axis.
-	 * @param i_nCellsY number of cells on the y axis.
+     * @param i_nCellsY number of cells on the y axis.
      * @param i_setup setup for cell initialization.
      * @param i_scaleX scale for the scene in x direction; e.g. you can multiply the number of cells by x, and set the scale to 1/x, and your setup will still work.
      * @param i_scaleY scale for the scene in y direction
@@ -85,11 +88,11 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      * Computes the maximum time step that is allowed without breaking the CFL condition.
      **/
     t_real computeMaxTimestep( t_real i_cellSizeMeters );
-	
-	/**
-	 * Internal function, which computes and applies the update from two neighbor cells to each other
-	 
-	 todo params
+    
+    /**
+     * Internal function, which computes and applies the update from two neighbor cells to each other
+     
+     todo params
      **/
     void internalUpdate( t_real i_scaling, t_idx l_ceL, t_idx l_ceR, 
         t_real* l_hOld, t_real* l_huOld, t_real* l_hNew, t_real* l_huNew );
@@ -201,7 +204,7 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
                        t_idx  i_iy,
                        t_real i_hv) {
       m_hv[m_step][(i_ix+1) + (i_iy+1) * (m_nCellsX+2)] = i_hv;
-	};
+    };
 };
 
 #endif

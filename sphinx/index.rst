@@ -11,6 +11,7 @@ Welcome to Tsunami Simulation's documentation!
   reports/riemann_solver.rst
   reports/finite_volume_discretization.rst
   reports/bathymetry.rst
+  reports/two_dimensions.rst
   :maxdepth: 2
   :caption: Contents:
 

@@ -26,7 +26,7 @@ void tsunami_lab::simulation::Simulation::run( tsunami_lab::t_idx               
                                                tsunami_lab::t_idx                      i_maxTimesteps,
 											   tsunami_lab::t_real                     i_maxDuration,
                                                tsunami_lab::t_idx                      i_outputStepSize,
-                                               tsunami_lab::t_idx                      i_numOutputSteps,
+                                               tsunami_lab::t_idx                      i_outputPeriod,
                                                std::vector<tsunami_lab::io::Station> & i_stations ) {
    
   std::cout << "runtime configuration" << std::endl;
@@ -57,24 +57,17 @@ void tsunami_lab::simulation::Simulation::run( tsunami_lab::t_idx               
   tsunami_lab::t_real l_timestep;
   
   double l_time = 0;
-  
-  t_idx l_maxTimestepsForPrinting = i_maxTimesteps;
-  if(l_maxTimestepsForPrinting >= std::numeric_limits<t_idx>::max()){
-	// if no timestep limit is set, then guess a limit for writing files to disk,
-	// otherwise nearly no files would be written
-	t_real l_guessedDt = l_waveProp->computeMaxTimestep( i_cellSizeMeters );
-	l_maxTimestepsForPrinting = (t_idx) std::ceil(i_maxDuration / l_guessedDt);
-  }
 
   std::cout << "entering time loop" << std::endl;
 
   // iterate over time
   tsunami_lab::t_idx l_lastOutputIndex = -1;
-  for(tsunami_lab::t_idx l_timeStepIndex = 0; l_timeStepIndex < i_maxTimesteps && l_time < i_maxDuration; l_timeStepIndex++ ){
+  tsunami_lab::t_idx l_timeStepIndex = 0;
+  for(; l_timeStepIndex < i_maxTimesteps && l_time < i_maxDuration; l_timeStepIndex++ ){
 
     // index, which frame we'd need to print theoretically
     // if there are more frames requested than simulated, we just skip some
-    tsunami_lab::t_idx l_outputIndex = l_timeStepIndex * (i_numOutputSteps-1) / std::max(l_maxTimestepsForPrinting-1, (t_idx) 1);
+    tsunami_lab::t_idx l_outputIndex = (t_idx) (l_time / i_outputPeriod);
     if(l_lastOutputIndex != l_outputIndex) {
       l_lastOutputIndex = l_outputIndex;
       
@@ -86,7 +79,7 @@ void tsunami_lab::simulation::Simulation::run( tsunami_lab::t_idx               
       std::ofstream l_file;
       l_file.open( l_path );
 
-      tsunami_lab::io::Csv::write( i_cellSizeMeters, i_nx, i_ny, i_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), nullptr, l_waveProp->getBathymetry(), l_file );
+      tsunami_lab::io::Csv::write( i_cellSizeMeters, i_nx, i_ny, i_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file );
       l_file.close();
       l_nOut++;
     }
@@ -106,6 +99,18 @@ void tsunami_lab::simulation::Simulation::run( tsunami_lab::t_idx               
 
     l_time += l_timestep;
   }
+  
+  // print last state
+  std::cout << "  simulation time: " << l_time << ", #time steps: "<< l_timeStepIndex << std::endl;
+
+  std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
+  std::cout << "  writing wave field to " << l_path << std::endl;
+
+  std::ofstream l_file;
+  l_file.open(l_path);
+
+  tsunami_lab::io::Csv::write( i_cellSizeMeters, i_nx, i_ny, i_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file );
+  l_file.close();
   
   std::cout << "finished time loop" << std::endl;
   
