@@ -24,7 +24,7 @@ void tsunami_lab::io::Station::recordState( tsunami_lab::patches::WavePropagatio
   m_nextRecordTime = i_time + m_delayBetweenRecords;
 }
 
-void tsunami_lab::io::Station::write() {
+void tsunami_lab::io::Station::write( bool i_withComment ) {
   
   std::string l_fileName = "station_" + m_name + ".csv";
   
@@ -36,8 +36,10 @@ void tsunami_lab::io::Station::write() {
   }
   
   // print information about the station in some comments in the header
-  l_stream << "# Station " << m_name << "\n";
-  l_stream << "# Location (Grid) " << m_positionX << "," << m_positionY << "\n";
+  if(i_withComment){
+    l_stream << "# Station " << m_name << "\n";
+    l_stream << "# Location (Grid) " << m_positionX << "," << m_positionY << "\n";
+  }
   
   // write the CSV table header
   l_stream << "time,height,momentumX,momentumY\n";

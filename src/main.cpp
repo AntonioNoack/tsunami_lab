@@ -114,6 +114,7 @@ int main( int i_argc, char *i_argv[] ) {
     return EXIT_FAILURE;
   }
   
+  bool l_printStationComments = readBoolean(l_config, "printStationComments", true);
   if(l_config["stations"]) {
     auto   l_stationData = l_config["stations"].as<std::vector<YAML::Node>>();
     t_real l_delayBetweenRecords = readFloat(l_config, "delayBetweenRecords", 1);
@@ -269,23 +270,23 @@ int main( int i_argc, char *i_argv[] ) {
       std::cout << "  writing wave field to " << l_path << std::endl;
 
       std::ofstream l_file(l_path, std::ios::out);
-      tsunami_lab::io::Csv::write( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file );
+      tsunami_lab::io::Csv::write(l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file);
       l_file.close();
       l_nOut++;
     }
     
     // update recording stations, if there are any
-    if(!l_stations.empty() && l_stations[0].needsUpdate( l_time )) {
+    if(!l_stations.empty() && l_stations[0].needsUpdate(l_time)) {
       for(auto &l_station : l_stations) {
-        l_station.recordState( *l_waveProp, l_time );
+        l_station.recordState(*l_waveProp, l_time);
       }
     }
 
-    l_timestep = l_waveProp->computeMaxTimestep( l_cellSizeMeters );
+    l_timestep = l_waveProp->computeMaxTimestep(l_cellSizeMeters);
     l_waveProp->setGhostOutflow();
     
     t_real l_scaling = l_timestep / l_cellSizeMeters;
-    l_waveProp->timeStep( l_scaling );
+    l_waveProp->timeStep(l_scaling);
 
     l_time += l_timestep;
   }
@@ -303,7 +304,7 @@ int main( int i_argc, char *i_argv[] ) {
   l_file.close();
   
   for(auto &l_station : l_stations){
-    l_station.write();
+    l_station.write(l_printStationComments);
   }
   
   std::cout << "finished writing last state" << std::endl;

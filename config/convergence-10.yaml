@@ -1,0 +1,13 @@
+hl: 10
+hr: 5
+nx: 10
+ny: 10
+setup: DamBreak2d
+damRadius: 3.5
+cellSizeMeters: 10
+maxDuration: 20
+stations:
+  - name: s10
+    x: 0
+    y: 0
+printStationComments: false

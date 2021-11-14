@@ -51,9 +51,9 @@ class tsunami_lab::io::Station {
      * @param i_name station name.
      * @param i_delayBetweenRecords minimum delay between records in seconds.
      **/
-	Station( t_idx i_positionX, t_idx i_positionY, std::string i_name, t_real i_delayBetweenRecords):
-	  m_positionX(i_positionX), m_positionY(i_positionY), m_name(i_name), m_delayBetweenRecords(i_delayBetweenRecords) {}
-	
+    Station( t_idx i_positionX, t_idx i_positionY, std::string i_name, t_real i_delayBetweenRecords):
+      m_positionX(i_positionX), m_positionY(i_positionY), m_name(i_name), m_delayBetweenRecords(i_delayBetweenRecords) {}
+    
     /**
      * Returns whether a new record should be written at the given point in time.
      *
@@ -73,8 +73,10 @@ class tsunami_lab::io::Station {
     
     /**
      * Writes all recorded data to a csv file.
+     *
+     * @param i_withComment whether the comment should be printed.
      **/
-    void write( );
+    void write( bool i_withComment );
     
 };
 
