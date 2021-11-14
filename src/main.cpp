@@ -121,10 +121,15 @@ int main( int i_argc, char *i_argv[] ) {
     for(t_idx i=0;i<l_stationData.size();i++){
       auto l_station = l_stationData[i];
       std::string l_name = l_station["name"].as<std::string>();
-      t_idx       l_x    = l_station["x"].as<t_idx>();
-      t_idx       l_y    = l_station["y"].as<t_idx>();
-      tsunami_lab::io::Station l_station1(l_x, l_y, l_name, l_delayBetweenRecords);
-      l_stations.push_back(l_station1);
+      int64_t     l_x    = l_station["x"].as<int64_t>();
+      int64_t     l_y    = l_station["y"].as<int64_t>();
+      if(l_x >= 0 && (t_idx) l_x < l_nx && l_y >= 0 && (t_idx) l_y < l_ny){
+        tsunami_lab::io::Station l_station1((t_idx) l_x, (t_idx) l_y, l_name, l_delayBetweenRecords);
+        l_stations.push_back(l_station1);
+      } else {
+        std::cerr << "Station " << i << ", called '" << l_name << "' is out of bounds: " << l_x << "," << l_y << " !in 0.." << l_nx << ",0.." << l_ny << std::endl;
+        return EXIT_FAILURE;
+      }
     }
   }
   
