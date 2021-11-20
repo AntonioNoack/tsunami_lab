@@ -17,12 +17,11 @@
 #error "already defined check()"
 #endif
 
-// static code analysis doesn't allow me to return here, because I would memleak l_dataWithoutStride
 #define check(error) {\
   l_err = error;\
   if(l_err != NC_NOERR){\
     printf("NetCDF-Error occurred: %s (Code %d), line %d\n", nc_strerror(l_err), l_err, __LINE__);\
-    throw std::runtime_error("NetCDF failed");\
+    return -1;\
   }\
 }
 
@@ -64,7 +63,7 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
   int l_xVarId, l_yVarId; // values on x and y axes (e.g. 0 .. 50 x 0 .. 50)
   int l_tVarId;// time values in seconds
   
-  float* l_dataWithoutStride = new float[l_nx * l_ny];
+  std::vector<float> l_dataWithoutStride(l_nx * l_ny);
   
   // todo units, other axis descriptions
   // define dimensions
@@ -111,8 +110,8 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
     
     // nx*ny >= max(nx,ny) (because nx >= 1, ny >= 1), so we can reuse l_dataWithoutStride
     for(int i=0,j=0,l=std::max(l_nx,l_ny);j<l;i+=i_step,j++) l_dataWithoutStride[j] = (i+0.5) * i_cellSizeMeters;
-    check(nc_put_var_float(l_handle, l_xVarId, l_dataWithoutStride));// x and y axis share the same values, so we have to write them only once
-    check(nc_put_var_float(l_handle, l_yVarId, l_dataWithoutStride));
+    check(nc_put_var_float(l_handle, l_xVarId, l_dataWithoutStride.data()));// x and y axis share the same values, so we have to write them only once
+    check(nc_put_var_float(l_handle, l_yVarId, l_dataWithoutStride.data()));
     
   } else {
     
@@ -140,7 +139,7 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
         l_dataWithoutStride[o++] = i_h[l_idx];
       }
     }
-    check(nc_put_vara_float(l_handle, l_heightId, l_startVec, l_countVec, l_dataWithoutStride));
+    check(nc_put_vara_float(l_handle, l_heightId, l_startVec, l_countVec, l_dataWithoutStride.data()));
   }
   
   if(i_hu){
@@ -150,7 +149,7 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
         l_dataWithoutStride[o++] = i_hu[l_idx];
       }
     }
-    check(nc_put_vara_float(l_handle, l_momentumXId, l_startVec, l_countVec, l_dataWithoutStride));
+    check(nc_put_vara_float(l_handle, l_momentumXId, l_startVec, l_countVec, l_dataWithoutStride.data()));
   }
   
   if(i_hv){
@@ -160,7 +159,7 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
         l_dataWithoutStride[o++] = i_hv[l_idx];
       }
     }
-    check(nc_put_vara_float(l_handle, l_momentumYId, l_startVec, l_countVec, l_dataWithoutStride));
+    check(nc_put_vara_float(l_handle, l_momentumYId, l_startVec, l_countVec, l_dataWithoutStride.data()));
   }
   
   if(l_isFirstFrame){
@@ -172,7 +171,7 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
         }
       }
       // there is only a single frame of bathymetry, so we can use var instead of vara
-      check(nc_put_var_float(l_handle, l_bathymetryId, l_dataWithoutStride));
+      check(nc_put_var_float(l_handle, l_bathymetryId, l_dataWithoutStride.data()));
     }
     if(i_setup){
       t_real l_scaleX, l_scaleY;
@@ -185,13 +184,11 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
         }
       }
       // there is only a single frame of displacement, so we can use var instead of vara
-      check(nc_put_var_float(l_handle, l_displacementId, l_dataWithoutStride));
+      check(nc_put_var_float(l_handle, l_displacementId, l_dataWithoutStride.data()));
     }
   }
   
   check(nc_close(l_handle));
-  
-  delete[] l_dataWithoutStride;
   
   return EXIT_SUCCESS;
   
