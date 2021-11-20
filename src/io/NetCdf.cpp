@@ -10,17 +10,19 @@
 #include <cmath> // isnan
 #include <sstream>
 #include <fstream>
+#include <stdexcept>
 #include <netcdf.h>
 
 #ifdef check
 #error "already defined check()"
 #endif
 
+// static code analysis doesn't allow me to return here, because I would memleak l_dataWithoutStride
 #define check(error) {\
   l_err = error;\
   if(l_err != NC_NOERR){\
     printf("NetCDF-Error occurred: %s (Code %d), line %d\n", nc_strerror(l_err), l_err, __LINE__);\
-    return -1;\
+    throw std::runtime_error("NetCDF failed");\
   }\
 }
 
