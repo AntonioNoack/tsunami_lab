@@ -28,6 +28,7 @@
 #include "io/Station.h"
 #include "patches/WavePropagation1d.h"
 #include "patches/WavePropagation2d.h"
+#include "setups/ArtificialTsunami2d.h"
 #include "setups/DamBreak1d.h"
 #include "setups/DamBreak2d.h"
 #include "setups/Discontinuity1d.h"
@@ -224,12 +225,12 @@ int main( int i_argc, char *i_argv[] ) {
     }
     // load data
     t_idx l_nx2, l_ny2;
-	t_real l_cellSizeMeters2;
+    t_real l_cellSizeMeters2;
     tsunami_lab::io::NetCDF::load2dArray(l_config["bathymetryFile"].as<std::string>(), "z", l_nx, l_ny, l_cellSizeMeters2, l_bathymetry);
     tsunami_lab::io::NetCDF::load2dArray(l_config["displacementFile"].as<std::string>(), "z", l_nx2, l_ny2, l_cellSizeMeters2, l_displacement);
-	if(l_cellSizeMeters == 1.0){
-	  l_cellSizeMeters = l_cellSizeMeters2;
-	} else std::cout << "used cell size override from config. Cell size from file: " << l_cellSizeMeters2 << std::endl;
+    if(l_cellSizeMeters == 1.0){
+      l_cellSizeMeters = l_cellSizeMeters2;
+    } else std::cout << "used cell size override from config. Cell size from file: " << l_cellSizeMeters2 << std::endl;
     t_real l_sideRatio = (l_nx2 * l_ny) / (t_real) (l_ny2 * l_nx); // ideally 1
     if(l_sideRatio < 0.99 || l_sideRatio > 1.01){
       std::cerr << "warning: aspect ratio from bathymetry and displacement are different!" << std::endl;
@@ -262,6 +263,10 @@ int main( int i_argc, char *i_argv[] ) {
     l_nx = (t_idx) (25 * l_scale);
     l_cellSizeMeters = 1 / l_scale;
     l_setup = new tsunami_lab::setups::SupercriticalFlow1d();
+  } else if(
+    l_setupName == "ArtificialTsunami2d"
+  ){
+    l_setup = new tsunami_lab::setups::ArtificialTsunami2d();
   } else {
     std::cerr << "unknown/invalid setup type \"" << l_setupName << "\"" << std::endl;
     return EXIT_FAILURE;
@@ -331,8 +336,8 @@ int main( int i_argc, char *i_argv[] ) {
         if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_time, l_nOut, l_netCdfPath)) return EXIT_FAILURE;
       }
       
-	  l_nOut++;
-	  
+      l_nOut++;
+      
     }
     
     // update recording stations, if there are any
@@ -343,10 +348,10 @@ int main( int i_argc, char *i_argv[] ) {
     }
 
     l_timestep = l_waveProp->computeMaxTimestep(l_cellSizeMeters);
-	if(!std::isfinite(l_timestep)){
-	  std::cerr << "there no longer is any valid fluid in the simulation! Stopping." << std::endl;
-	  break;// NaN or Infinite timestep -> illegal -> stop simulation
-	}
+    if(!std::isfinite(l_timestep)){
+      std::cerr << "there no longer is any valid fluid in the simulation! Stopping." << std::endl;
+      break;// NaN or Infinite timestep -> illegal -> stop simulation
+    }
     l_waveProp->setGhostOutflow();
     
     t_real l_scaling = l_timestep / l_cellSizeMeters;

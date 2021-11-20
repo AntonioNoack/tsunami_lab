@@ -1,0 +1,6 @@
+setup: ArtificialTsunami2d
+nx: 1000
+ny: 1000
+maxDuration: 50
+maxSteps: 10000
+outputPeriod: 1

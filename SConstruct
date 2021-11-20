@@ -87,7 +87,8 @@ env.Append( CXXFLAGS = [ '-Isubmodules/YamlCpp2/include' ] )
 conf = Configure(env)
 externalLibs = []
 # packages: netcdf-bin, libnetcdf-dev
-libs = ['netcdf','zlib','hdf5']
+# the task says, that zlib and hdf5 are required as packages, but SCons tells me it cannot find them, but builds fine anyways
+libs = ['netcdf'] # ,'zlib','hdf5'
 for lib in libs:
   if conf.CheckLib(lib):
     externalLibs.append(lib)
