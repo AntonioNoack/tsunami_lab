@@ -9,7 +9,7 @@
 
 TEST_CASE( "Test the two-dimensional dam break setup.", "[DamBreak2d]" ) {
   
-  tsunami_lab::setups::DamBreak2d l_setup( 10, 20, 0, 0, 3 );
+  tsunami_lab::setups::DamBreak2d l_setup( 10, 20, 0, 0, 3, 0 );
 
   // inside
   REQUIRE( l_setup.getHeight(    2, 0 ) == 10 );

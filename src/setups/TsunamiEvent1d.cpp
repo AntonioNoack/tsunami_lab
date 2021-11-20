@@ -42,11 +42,9 @@ tsunami_lab::t_real tsunami_lab::setups::TsunamiEvent1d::getBathymetry( t_real i
   // if we are on the shore, clamp the value either on top of the cliff or in the cliff-deep water
   t_real l_bathIn = getRawBathymetry(i_x);
   t_real l_delta  = m_shoreCliffHeight;
-  t_real l_valueBeforeDisplacement = std::abs(l_bathIn) < l_delta ?
+  return std::abs(l_bathIn) < l_delta ?
     l_bathIn < 0 ? -l_delta : l_delta :
     l_bathIn;
-  // an earth quake happened, so add its displacement
-  return l_valueBeforeDisplacement + getDisplacement( i_x, 0 );
 }
 
 tsunami_lab::t_real tsunami_lab::setups::TsunamiEvent1d::getDisplacement( t_real i_x, t_real ) const {

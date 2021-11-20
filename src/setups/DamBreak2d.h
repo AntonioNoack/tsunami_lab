@@ -40,6 +40,9 @@ class tsunami_lab::setups::DamBreak2d: public Setup {
 
     //! radius of the dam
     t_real m_radius = 0;
+
+    //! bathymetry of the whole region except for the obstacle; caution: values > 0 make the water stop flowing!
+    t_real m_bathymetry = 0;
     
     //! obstacle, by default empty
     ObstacleRect m_obstacle = { 0, 0, 0, 0, 0 };
@@ -53,12 +56,15 @@ class tsunami_lab::setups::DamBreak2d: public Setup {
      * @param i_locationX location (x-coordinate) of the dam center.
      * @param i_locationY location (y-coordinate) of the dam center.
      * @param i_radius radius of the dam.
+     * @param i_bathymetry bathymetry in the whole region except for the obstacle.
      **/
     DamBreak2d( t_real i_heightInner,
                 t_real i_heightOuter,
                 t_real i_locationX,
                 t_real i_locationY,
-                t_real i_radius );
+                t_real i_radius,
+				t_real i_bathymetry ): m_heightInner(i_heightInner), m_heightOuter(i_heightOuter),
+				m_locationX(i_locationX), m_locationY(i_locationY), m_radius(i_radius), m_bathymetry(i_bathymetry) {}
     
     /**
      * Defines the (optional) obstacle.
@@ -113,6 +119,16 @@ class tsunami_lab::setups::DamBreak2d: public Setup {
      * @return momentum in y-direction.
      **/
     t_real getMomentumY( t_real, t_real ) const;
+
+    /**
+     * Gets the earth quake displacement.
+     * Positive values mean the ground moved upwards.
+     *
+     * @return displacement in meters at the given point.
+     **/
+    t_real getDisplacement( t_real, t_real ) const {
+      return 0;
+    }
 
 };
 

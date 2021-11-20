@@ -23,16 +23,18 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include "io/Csv.h"
+#include "io/NetCdf.h"
+#include "io/Station.h"
 #include "patches/WavePropagation1d.h"
 #include "patches/WavePropagation2d.h"
-#include "setups/Discontinuity1d.h"
 #include "setups/DamBreak1d.h"
 #include "setups/DamBreak2d.h"
+#include "setups/Discontinuity1d.h"
 #include "setups/SubcriticalFlow1d.h"
 #include "setups/SupercriticalFlow1d.h"
 #include "setups/TsunamiEvent1d.h"
-#include "io/Station.h"
-#include "io/Csv.h"
+#include "setups/TsunamiEvent2d.h"
 
 #define t_real tsunami_lab::t_real
 #define t_idx  tsunami_lab::t_idx
@@ -89,8 +91,10 @@ int main( int i_argc, char *i_argv[] ) {
   t_real l_heightRight     = readFloat(l_config, "hr",  5);
   t_real l_impulseLeft     = readFloat(l_config, "hul", 0);
   t_real l_impulseRight    = readFloat(l_config, "hur", 0);
-  t_real l_bathymetryLeft  = readFloat(l_config, "bl", -1);
-  t_real l_bathymetryRight = readFloat(l_config, "br", -1);
+  t_real l_bathymetryLeft  = readFloat(l_config, "bl",  0);
+  t_real l_bathymetryRight = readFloat(l_config, "br",  0);
+  t_real l_damBathymetry   = readFloat(l_config, "bathymetry", 0);// bathymetry for 1d and 2d dam
+  // (dam bathymetry) caution: values above zero mean stopped fluid, because they mean a dry area, and the solver does not support wetting/drying.
   t_real l_splitPositionX  = readFloat(l_config, "splitPositionX", l_nx * 0.5);
   t_real l_splitPositionY  = readFloat(l_config, "splitPositionY", l_ny * 0.5);
   t_real l_damRadius       = readFloat(l_config, "damRadius", l_nx / 4);
@@ -128,6 +132,7 @@ int main( int i_argc, char *i_argv[] ) {
         l_stations.push_back(l_station1);
       } else {
         std::cerr << "Station " << i << ", called '" << l_name << "' is out of bounds: " << l_x << "," << l_y << " !in 0.." << l_nx << ",0.." << l_ny << std::endl;
+        std::cerr << "This invalid entry was found in the file '" << i_argv[1] << "'" << std::endl;
         return EXIT_FAILURE;
       }
     }
@@ -139,19 +144,19 @@ int main( int i_argc, char *i_argv[] ) {
   
   // must stay in scope; I don't have a better solution currently; maybe the value could be moved into setup
   // a copy shouldn't be expensive compared to our simulation and writing the results to disk
-  std::vector<t_real> l_heights;
+  std::vector<t_real> l_bathymetry;
+  std::vector<t_real> l_displacement;
   
-  // C++ doesn't have switch-case for strings? :/
   if(
     l_setupName == "DamBreak" ||
     l_setupName == "DamBreak1d"
   ) {
-    l_setup = new tsunami_lab::setups::DamBreak1d(l_heightLeft, l_heightRight, l_splitPositionX);
+    l_setup = new tsunami_lab::setups::DamBreak1d(l_heightLeft, l_heightRight, l_splitPositionX, l_damBathymetry);
   } else if(
     l_setupName == "DamBreakCircle" ||
     l_setupName == "DamBreak2d"
   ) {
-    auto l_dambreak2d = new tsunami_lab::setups::DamBreak2d(l_heightLeft, l_heightRight, l_splitPositionX, l_splitPositionY, l_damRadius);
+    auto l_dambreak2d = new tsunami_lab::setups::DamBreak2d(l_heightLeft, l_heightRight, l_splitPositionX, l_splitPositionY, l_damRadius, l_damBathymetry);
     if(l_config["obstacleBathymetry"]) {
       // an obstacle should be defined
       l_dambreak2d->setObstacle(
@@ -169,7 +174,7 @@ int main( int i_argc, char *i_argv[] ) {
   ){
     l_setup = new tsunami_lab::setups::Discontinuity1d(l_heightLeft, l_heightRight, l_impulseLeft, l_impulseRight, l_bathymetryLeft, l_bathymetryRight, l_splitPositionX);
   } else if(
-    l_setupName == "Track" || 
+    l_setupName == "GMTTrack" || 
     l_setupName == "Tsunami"
   ) {
     if(l_config["setupFile"]){
@@ -179,12 +184,12 @@ int main( int i_argc, char *i_argv[] ) {
       
       // here we probably copy; this potentially could be optimized
       auto l_xs = tsunami_lab::io::Csv::findColumn(l_loadedData, "track_location");
-      l_heights = tsunami_lab::io::Csv::findColumn(l_loadedData, "height");
+      l_bathymetry = tsunami_lab::io::Csv::findColumn(l_loadedData, "height");
       
       if(l_xs.size() < 1){
         std::cerr << "did not find position data in track file" << std::endl;
         return EXIT_FAILURE;
-      } else if(l_heights.size() < 1){
+      } else if(l_bathymetry.size() < 1){
         std::cerr << "did not find bathymetry data in track file" << std::endl;
         return EXIT_FAILURE;
       }
@@ -194,17 +199,53 @@ int main( int i_argc, char *i_argv[] ) {
       l_nx = l_xs.size() * l_scale - 2;// 2 = ghost cells
       l_ny = 1;// it's just a 1d simulation
       
-      t_real l_displacementStart = readFloat(l_config, "displacementStart", 175000) / l_cellSizeMeters;
-      t_real l_displacementEnd   = readFloat(l_config, "displacementEnd",   250000) / l_cellSizeMeters;
-      t_real l_displacement      = readFloat(l_config, "displacement", 10);
+      t_real l_displacementStart  = readFloat(l_config, "displacementStart", 175000) / l_cellSizeMeters;
+      t_real l_displacementEnd    = readFloat(l_config, "displacementEnd",   250000) / l_cellSizeMeters;
+      t_real l_displacementHeight = readFloat(l_config, "displacement", 10);
       
       // construct setup
-      l_setup = new tsunami_lab::setups::TsunamiEvent1d(l_heights.data(), l_heights.size(), 1/l_scale, l_displacementStart, l_displacementEnd, l_displacement);
+      l_setup = new tsunami_lab::setups::TsunamiEvent1d(l_bathymetry.data(), l_bathymetry.size(), 1/l_scale, l_displacementStart, l_displacementEnd, l_displacementHeight);
       
     } else {
-      std::cerr << "missing parameter 'setupFile' for setup type Track" << std::endl;
+      std::cerr << "missing parameter 'setupFile' for setup type Tsunami1d/GMTTrack" << std::endl;
       return EXIT_FAILURE;
     }
+  } else if(
+    l_setupName == "Tsunami2d" ||
+    l_setupName == "NetCDF"
+  ){
+    if(!l_config["bathymetryFile"]){
+      std::cerr << "missing parameter 'bathymetryFile' for setup type Tsunami2d/NetCDF" << std::endl;
+      return EXIT_FAILURE;
+    }
+    if(!l_config["displacementFile"]){
+      std::cerr << "missing parameter 'displacementFile' for setup type Tsunami2d/NetCDF" << std::endl;
+      return EXIT_FAILURE;
+    }
+    // load data
+    t_idx l_nx2, l_ny2;
+	t_real l_cellSizeMeters2;
+    tsunami_lab::io::NetCDF::load2dArray(l_config["bathymetryFile"].as<std::string>(), "z", l_nx, l_ny, l_cellSizeMeters2, l_bathymetry);
+    tsunami_lab::io::NetCDF::load2dArray(l_config["displacementFile"].as<std::string>(), "z", l_nx2, l_ny2, l_cellSizeMeters2, l_displacement);
+	if(l_cellSizeMeters == 1.0){
+	  l_cellSizeMeters = l_cellSizeMeters2;
+	} else std::cout << "used cell size override from config. Cell size from file: " << l_cellSizeMeters2 << std::endl;
+    t_real l_sideRatio = (l_nx2 * l_ny) / (t_real) (l_ny2 * l_nx); // ideally 1
+    if(l_sideRatio < 0.99 || l_sideRatio > 1.01){
+      std::cerr << "warning: aspect ratio from bathymetry and displacement are different!" << std::endl;
+    }
+    if(l_nx < 2 || l_ny < 2 || l_nx2 < 2 || l_ny2 < 2){
+      std::cerr << "data must have at least 2 x 2 fields, read " << l_nx << " x " << l_ny << ", " << l_nx2 << " x " << l_ny2 << std::endl;
+      return EXIT_FAILURE;
+    }
+    // create setup
+    l_setup = new tsunami_lab::setups::TsunamiEvent2d(
+      l_bathymetry.data(), l_nx, l_ny, l_nx, 1/(l_scale*l_scale),
+      l_displacement.data(), l_nx2, l_ny2, l_nx2, 1/(l_scale*l_scale) * std::sqrt((l_nx2*l_ny2)/(t_real)(l_nx*l_ny))
+    );
+    // scale it up
+    l_nx = (l_nx-2) * l_scale;// 2 for ghost cells; those cannot be scaled, and are re-added by the WavePropagation class
+    l_ny = (l_ny-2) * l_scale;
   } else if( 
     l_setupName == "Subcritical" ||
     l_setupName == "SubcriticalFlow" ||
@@ -234,6 +275,9 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "  number of cells in y-direction: " << l_ny << std::endl;
   std::cout << "  cell size (meters):             " << l_cellSizeMeters << std::endl;
   std::cout << "  number of stations:             " << l_stations.size() << std::endl;
+  std::cout << "  split position x:               " << l_splitPositionX << std::endl;
+  std::cout << "  split position y:               " << l_splitPositionY << std::endl;
+  std::cout << "  applied scale:                  " << l_scale << std::endl;
   
   for(t_idx l_i=0;l_i<1000;l_i++){
     // delete all old files;
@@ -257,6 +301,9 @@ int main( int i_argc, char *i_argv[] ) {
   double l_time = 0;
 
   std::cout << "entering time loop" << std::endl;
+  
+  std::string l_netCdfPath = "solution.nc";
+  bool l_exportCSV = readBoolean(l_config, "exportCSV", false);
 
   // iterate over time
   t_idx l_lastOutputIndex = -1;
@@ -266,18 +313,26 @@ int main( int i_argc, char *i_argv[] ) {
     // index, which frame we'd need to print theoretically
     // if there are more frames requested than simulated, we just skip some
     t_idx l_outputIndex = (t_idx) (l_time / l_outputPeriod);
-    if(l_lastOutputIndex != l_outputIndex) {
+    if(l_timeStepIndex == 0 || l_lastOutputIndex != l_outputIndex) {
       l_lastOutputIndex = l_outputIndex;
       
       std::cout << "  simulation time: " << l_time << ", #time steps: "<< l_timeStepIndex << std::endl;
-
-      std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
-      std::cout << "  writing wave field to " << l_path << std::endl;
-
-      std::ofstream l_file(l_path, std::ios::out);
-      tsunami_lab::io::Csv::write(l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file);
-      l_file.close();
-      l_nOut++;
+      
+      if(l_exportCSV){
+        
+        std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
+        std::cout << "  writing wave field to " << l_path << std::endl;
+        
+        std::ofstream l_file(l_path, std::ios::out);
+        tsunami_lab::io::Csv::write(l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file);
+        l_file.close();
+        
+      } else {
+        if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_time, l_nOut, l_netCdfPath)) return EXIT_FAILURE;
+      }
+      
+	  l_nOut++;
+	  
     }
     
     // update recording stations, if there are any
@@ -288,6 +343,10 @@ int main( int i_argc, char *i_argv[] ) {
     }
 
     l_timestep = l_waveProp->computeMaxTimestep(l_cellSizeMeters);
+	if(!std::isfinite(l_timestep)){
+	  std::cerr << "there no longer is any valid fluid in the simulation! Stopping." << std::endl;
+	  break;// NaN or Infinite timestep -> illegal -> stop simulation
+	}
     l_waveProp->setGhostOutflow();
     
     t_real l_scaling = l_timestep / l_cellSizeMeters;
@@ -299,14 +358,20 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "finished time loop" << std::endl;
   
   // print last state
-  std::cout << "  simulation time: " << l_time << ", #time steps: "<< l_timeStepIndex << std::endl;
-
-  std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
-  std::cout << "  writing wave field to " << l_path << std::endl;
-
-  std::ofstream l_file(l_path, std::ios::out);
-  tsunami_lab::io::Csv::write( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file );
-  l_file.close();
+  std::cout << "  simulation end time: " << l_time << ", #total time steps: "<< l_timeStepIndex << std::endl;
+  
+  if(l_exportCSV){
+      
+    std::string l_path = "solution_" + std::to_string(l_nOut) + ".csv";
+    std::cout << "  writing wave field to " << l_path << std::endl;
+    
+    std::ofstream l_file(l_path, std::ios::out);
+    tsunami_lab::io::Csv::write( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file );
+    l_file.close();
+    
+  } else {
+    if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_time, l_nOut, l_netCdfPath)) return EXIT_FAILURE;
+  }
   
   for(auto &l_station : l_stations){
     l_station.write(l_printStationComments);

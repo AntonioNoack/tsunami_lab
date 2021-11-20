@@ -75,11 +75,26 @@ if 'san' in  env['mode']:
                             '-fsanitize=address',
                             '-fsanitize=undefined' ] )
 
+env.Append( CXXFLAGS = [ '-g' ] )
+
 # add Catch2
 env.Append( CXXFLAGS = [ '-Isubmodules/Catch2/single_include' ] )
 
 # add Yaml-Cpp
 env.Append( CXXFLAGS = [ '-Isubmodules/YamlCpp2/include' ] )
+
+# add netCDF
+conf = Configure(env)
+externalLibs = []
+# packages: netcdf-bin, libnetcdf-dev
+libs = ['netcdf','zlib','hdf5']
+for lib in libs:
+  if conf.CheckLib(lib):
+    externalLibs.append(lib)
+  else:
+    print(f'libary {lib} was not found!')
+env.Append( CXXFLAGS = [ '-lnetcdf' ] )
+env.Append( LINKFLAGS = [ '-lnetcdf' ] )
 
 # get source files
 VariantDir( variant_dir = 'build/src',
@@ -104,7 +119,9 @@ SConscript( 'build/src/SConscript' )
 Import('env')
 
 env.Program( target = 'build/tsunami_lab',
-             source = env.sources + env.standalone )
+             source = env.sources + env.standalone,
+             LIBS = externalLibs)
 
 env.Program( target = 'build/tests',
-             source = env.sources + env.tests )
+             source = env.sources + env.tests,
+             LIBS = externalLibs)

@@ -68,14 +68,14 @@ void tsunami_lab::patches::WavePropagation1d::initWithSetup( tsunami_lab::setups
     t_real* l_h  = m_h [l_st];
     t_real* l_hu = m_hu[l_st];
     for( t_idx l_ce = 0; l_ce < m_nCells + 2; l_ce++ ) {
-      t_real l_x = (l_ce - 1) * i_scale;
+      t_real l_x = (l_ce - (t_real) 0.5) * i_scale;
       l_h [l_ce] = i_setup->getHeight(l_x, 0);
       l_hu[l_ce] = i_setup->getMomentumX(l_x, 0);
     }
   }
   for( t_idx l_ce = 0; l_ce < m_nCells + 2; l_ce++ ) {
-    t_real l_x = (l_ce - 1) * i_scale;
-    m_bathymetry[l_ce] = i_setup->getBathymetry(l_x, 0);
+    t_real l_x = (l_ce - (t_real) 0.5) * i_scale;
+    m_bathymetry[l_ce] = i_setup->getBathymetry(l_x, 0) + i_setup->getDisplacement(l_x, 0);
   }
 }
 
@@ -158,12 +158,12 @@ void tsunami_lab::patches::WavePropagation1d::timeStep( t_real i_scaling, t_idx 
     }
     
     // update the cells' quantities
-    if(l_bL0 < 0){
+    if(l_bL0 <= 0){
       l_hNew [l_ceL] -= i_scaling * l_netUpdatesL[0];
       l_huNew[l_ceL] -= i_scaling * l_netUpdatesL[1];
     } else l_huNew[l_ceL] = l_hNew[l_ceL] = 0;
     
-    if(l_bR0 < 0){
+    if(l_bR0 <= 0){
       l_hNew [l_ceR] -= i_scaling * l_netUpdatesR[0];
       l_huNew[l_ceR] -= i_scaling * l_netUpdatesR[1];
     } else l_huNew[l_ceR] = l_hNew[l_ceR] = 0;

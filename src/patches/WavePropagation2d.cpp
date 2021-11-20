@@ -8,6 +8,7 @@
 #include <cmath> // std::sqrt
 #include <iostream>
 #include <cassert> // assert
+#include <cstring> // memcpy
 #include "WavePropagation2d.h"
 #include "../setups/Setup.h"
 #include "../solvers/FWave.h"
@@ -84,14 +85,15 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
 }
 
 void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY ) {
+  i_setup->setInitScale(i_scaleX, i_scaleY);
   for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
     t_real* l_h  = m_h [l_st];
     t_real* l_hu = m_hu[l_st];
     t_real* l_hv = m_hv[l_st];
     for( t_idx l_iy = 0, l_i = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
-      t_real l_y = (l_iy - 1) * i_scaleY;
+      t_real l_y = (l_iy - (t_real) 0.5) * i_scaleY;// -0.5 = -1 (ghost zone) + 0.5 (center of cell)
       for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
-        t_real l_x = (l_ix - 1) * i_scaleX;
+        t_real l_x = (l_ix - (t_real) 0.5) * i_scaleX;
         l_h [l_i] = i_setup->getHeight(    l_x, l_y );
         l_hu[l_i] = i_setup->getMomentumX( l_x, l_y );
         l_hv[l_i] = i_setup->getMomentumY( l_x, l_y );
@@ -100,10 +102,10 @@ void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups
   }
   
   for( t_idx l_iy = 0, l_i = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
-    t_real l_y = (l_iy - 1) * i_scaleY;
+    t_real l_y = (l_iy - (t_real) 0.5) * i_scaleY;
     for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
-      t_real l_x = (l_ix - 1) * i_scaleX;
-      m_bathymetry[l_i] = i_setup->getBathymetry( l_x, l_y );
+      t_real l_x = (l_ix - (t_real) 0.5) * i_scaleX;
+      m_bathymetry[l_i] = i_setup->getBathymetry( l_x, l_y ) + i_setup->getDisplacement( l_x, l_y );
     }
   }
 }
@@ -122,7 +124,6 @@ void tsunami_lab::patches::WavePropagation2d::internalUpdate( t_real i_scaling, 
   
   t_real* l_b = m_bathymetry;
   
-  // compute net-updates
   t_real l_netUpdatesL[2];
   t_real l_netUpdatesR[2];
   
@@ -148,6 +149,7 @@ void tsunami_lab::patches::WavePropagation2d::internalUpdate( t_real i_scaling, 
     }
   }
   
+  // compute net-updates
   if(m_useFWaveSolver){
     solvers::FWave::netUpdates( l_hL, l_hR, l_huL, l_huR, l_bL, l_bR, l_netUpdatesL, l_netUpdatesR );
   } else {
@@ -155,51 +157,36 @@ void tsunami_lab::patches::WavePropagation2d::internalUpdate( t_real i_scaling, 
   }
   
   // update the cells' quantities
-  if(l_bL0 < 0){
+  if(l_bL0 <= 0){
     l_hNew [l_ceL] -= i_scaling * l_netUpdatesL[0];
     l_huNew[l_ceL] -= i_scaling * l_netUpdatesL[1];
   } else l_huNew[l_ceL] = l_hNew[l_ceL] = 0;
   
-  if(l_bR0 < 0){
+  if(l_bR0 <= 0){
     l_hNew [l_ceR] -= i_scaling * l_netUpdatesR[0];
     l_huNew[l_ceR] -= i_scaling * l_netUpdatesR[1];
   } else l_huNew[l_ceR] = l_hNew[l_ceR] = 0;
-  
-  // if there is numerical issues, e.g. from very shallow water,
-  // try to keep the simulation running;
-  // this is kind of incorrect, but it's incorrect anyways.
-  // we could print a warning, if that happens
-  if(std::isnan(l_hNew[l_ceL])){
-    l_hNew[l_ceL] = l_hL;
-    l_huNew[l_ceL] = l_huL;
-  }
-  
-  if(std::isnan(l_hNew[l_ceR])){
-    l_hNew[l_ceR] = l_hR;
-    l_huNew[l_ceR] = l_huR;
-  }
   
 }
 
 void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   
   // pointers to old and new data
-  t_real* l_hOld  = m_h [0];
+  t_real* l_hOld  = m_h[0];
+  t_real* l_hNew  = m_h[1];
+  
   t_real* l_huOld = m_hu[m_step];
   t_real* l_hvOld = m_hv[m_step];
   
-  m_step = !m_step;
+  t_real* l_huNew = m_hu[1-m_step];
+  t_real* l_hvNew = m_hv[1-m_step];
   
-  t_real* l_hNew  = m_h [1];
-  t_real* l_huNew = m_hu[m_step];
-  t_real* l_hvNew = m_hv[m_step];
+  m_step = !m_step;
 
   // init new cell quantities
-  for( t_idx l_ce = 0; l_ce < m_nCells; l_ce++ ) {
-    l_hNew [l_ce] = l_hOld [l_ce];
-    l_huNew[l_ce] = l_huOld[l_ce];
-    l_hvNew[l_ce] = l_hvOld[l_ce];
-  }
+  memcpy(l_hNew,  l_hOld,  sizeof(t_real) * m_nCells);
+  memcpy(l_huNew, l_huOld, sizeof(t_real) * m_nCells);
+  memcpy(l_hvNew, l_hvOld, sizeof(t_real) * m_nCells);
   
     //////////////////////////////
    // half step in x direction //
@@ -217,14 +204,12 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     }
   }
   
-  // pointers to old and new data
-  l_hOld  = l_hNew;
-  l_hNew  = m_h [0];
+  // update pointers to old and new data
+  l_hOld = m_h[1];
+  l_hNew = m_h[0];
 
   // init new cell quantities
-  for( t_idx l_ce = 0; l_ce < m_nCells; l_ce++ ) {
-    l_hNew [l_ce] = l_hOld [l_ce];
-  }
+  memcpy(l_hNew, l_hOld, sizeof(t_real) * m_nCells);
   
     //////////////////////////////
    // half step in y direction //

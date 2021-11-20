@@ -17,20 +17,12 @@
  **/
 #include "DamBreak1d.h"
 
-tsunami_lab::setups::DamBreak1d::DamBreak1d( t_real i_heightLeft,
-                                             t_real i_heightRight,
-                                             t_real i_locationDam ) {
-  m_heightLeft = i_heightLeft;
-  m_heightRight = i_heightRight;
-  m_locationDam = i_locationDam;
-}
-
 tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getHeight( t_real i_x, t_real ) const {
   return i_x < m_locationDam ? m_heightLeft : m_heightRight;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getBathymetry( t_real, t_real ) const {
-  return -20;
+  return m_bathymetry;
 }
 
 tsunami_lab::t_real tsunami_lab::setups::DamBreak1d::getMomentumX( t_real, t_real ) const {

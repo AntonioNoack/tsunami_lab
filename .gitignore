@@ -5,3 +5,4 @@ doxygen/*
 build/*
 sphinx/_build/*
 .sconsign.dblite
+.sconf_temp/*

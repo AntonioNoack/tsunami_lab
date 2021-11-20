@@ -25,7 +25,7 @@ namespace tsunami_lab {
   typedef std::size_t t_idx;
 
   //! floating point type
-  typedef double t_real;
+  typedef float t_real;
 }
 
 #endif

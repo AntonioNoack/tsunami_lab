@@ -1,5 +1,5 @@
 /**
- * @author Alexander Breuer (alex.breuer AT uni-jena.de)
+ * @author Alexander Breuer (alex.breuer AT uni-jena.de), Antonio Noack
  * 
  * @section LICENSE
  * Copyright 2020, Friedrich Schiller University Jena
@@ -19,9 +19,7 @@
 #include "DamBreak1d.h"
 
 TEST_CASE( "Test the one-dimensional dam break setup.", "[DamBreak1d]" ) {
-  tsunami_lab::setups::DamBreak1d l_damBreak( 25,
-                                              55,
-                                               3 );
+  tsunami_lab::setups::DamBreak1d l_damBreak( 25, 55, 3, 0 );
 
   // left side
   REQUIRE( l_damBreak.getHeight( 2, 0 ) == 25 );

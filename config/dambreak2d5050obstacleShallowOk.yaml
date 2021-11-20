@@ -7,6 +7,7 @@ maxDuration: 20
 maxSteps: 100000
 outputDelay: 1
 setup: DamBreak2d
+bathymetry: -20
 obstacleBathymetry: -16
 obstacleX0: 3
 obstacleX1: 35

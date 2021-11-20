@@ -1,0 +1,8 @@
+setup: Tsunami2d
+bathymetryFile: ../tohoku_gebco08_ucsb3_250m_bath.nc
+displacementFile: ../tohoku_gebco08_ucsb3_250m_displ.nc
+maxDuration: 200
+maxSteps: 100000
+outputStepSize: 1
+outputPeriod: 3
+scale: 0.02

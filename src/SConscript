@@ -24,11 +24,14 @@ l_sources = [ 'solvers/Roe.cpp',
               'patches/WavePropagation2d.cpp',
               'setups/DamBreak1d.cpp',
               'setups/DamBreak2d.cpp',
+              'setups/ArtificialTsunami2d.cpp',
               'setups/Discontinuity1d.cpp',
-              'setups/TsunamiEvent1d.cpp',
               'setups/SubcriticalFlow1d.cpp',
               'setups/SupercriticalFlow1d.cpp',
+              'setups/TsunamiEvent1d.cpp',
+              'setups/TsunamiEvent2d.cpp',
               'io/Csv.cpp',
+              'io/NetCdf.cpp',
               'io/Station.cpp' ]
 
 for l_src in l_sources:
@@ -42,12 +45,14 @@ l_tests = [ 'tests.cpp',
             'solvers/FWave.test.cpp',
             'patches/WavePropagation1d.test.cpp',
             'patches/WavePropagation2d.test.cpp',
+            'io/NetCdf.test.cpp',
             'io/Csv.test.cpp',
             'io/Station.test.cpp',
             'setups/DamBreak1d.test.cpp',
             'setups/DamBreak2d.test.cpp',
             'setups/Discontinuity1d.test.cpp',
-            'setups/TsunamiEvent1d.test.cpp' ]
+            'setups/TsunamiEvent1d.test.cpp',
+            'setups/TsunamiEvent2d.test.cpp' ]
 
 for l_te in l_tests:
   env.tests.append( env.Object( l_te ) )

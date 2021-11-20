@@ -101,6 +101,16 @@ class tsunami_lab::setups::Discontinuity1d: public Setup {
      * @return momentum in y-direction.
      **/
     t_real getMomentumY( t_real, t_real ) const;
+
+    /**
+     * Gets the earth quake displacement.
+     * Positive values mean the ground moved upwards.
+     *
+     * @return displacement in meters at the given point.
+     **/
+    t_real getDisplacement( t_real, t_real ) const {
+      return 0;
+    }
     
 };
 

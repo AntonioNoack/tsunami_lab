@@ -1,0 +1,8 @@
+nx: 20
+ny: 20
+hl: 10
+hr: 9
+damRadius: 4
+maxDuration: 8
+outputPeriod: 0.1
+setup: DamBreak2d

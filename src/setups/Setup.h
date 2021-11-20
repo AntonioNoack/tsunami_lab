@@ -30,6 +30,10 @@ namespace tsunami_lab {
  * Base setup.
  **/
 class tsunami_lab::setups::Setup {
+  private:
+    //! scale for setup; set on init of WavePropagation
+    t_real m_initScaleX = 1, m_initScaleY = 1;
+  
   public:
     /**
      * Virtual destructor for base class.
@@ -58,6 +62,16 @@ class tsunami_lab::setups::Setup {
                                   t_real i_y ) const = 0;
 
     /**
+     * Gets the earth quake displacement.
+     * Positive values mean the ground moved upwards.
+     *
+     * @param i_x x-coordinate of the queried point.
+     * @param i_y y-coordinate of the queried point.
+     * @return displacement in meters at the given point.
+     **/
+    virtual t_real getDisplacement( t_real i_x, t_real i_y ) const = 0;
+
+    /**
      * Gets the momentum in x-direction.
      *
      * @param i_x x-coordinate of the queried point.
@@ -76,7 +90,28 @@ class tsunami_lab::setups::Setup {
      **/
     virtual t_real getMomentumY( t_real i_x,
                                  t_real i_y ) const = 0;
-      
+    
+    /**
+     * Gets the init scales for x and y.
+     *
+     * @param o_initScaleX scale on x axis.
+     * @param o_initScaleY scale on y axis.
+     **/
+    void getInitScale(t_real &o_initScaleX, t_real &o_initScaleY){
+      o_initScaleX = m_initScaleX;
+      o_initScaleY = m_initScaleY;
+    }
+    
+    /**
+     * Sets the init scales for x and y.
+     *
+     * @param i_initScaleX scale on x axis.
+     * @param i_initScaleY scale on y axis.
+     **/
+    void setInitScale(t_real i_initScaleX, t_real i_initScaleY){
+      m_initScaleX = i_initScaleX;
+      m_initScaleY = i_initScaleY;
+    }
 };
 
 #endif

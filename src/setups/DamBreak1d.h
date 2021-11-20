@@ -39,6 +39,9 @@ class tsunami_lab::setups::DamBreak1d: public Setup {
 
     //! location of the dam
     t_real m_locationDam = 0;
+	
+	//! bathymetry in the whole region; must be <= 0
+	t_real m_bathymetry = 0;
 
   public:
     /**
@@ -47,10 +50,13 @@ class tsunami_lab::setups::DamBreak1d: public Setup {
      * @param i_heightLeft water height on the left side of the dam.
      * @param i_heightRight water height on the right side of the dam.
      * @param i_locationDam location (x-coordinate) of the dam.
+     * @param i_bathymetry bathymetry in the whole region, typically 0, has no influence, must be <= 0.
      **/
     DamBreak1d( t_real i_heightLeft,
                 t_real i_heightRight,
-                t_real i_locationDam );
+                t_real i_locationDam,
+				t_real i_bathymetry): m_heightLeft(i_heightLeft), m_heightRight(i_heightRight),
+				m_locationDam(i_locationDam), m_bathymetry(i_bathymetry) {}
 
     /**
      * Gets the water height at a given point.
@@ -84,6 +90,16 @@ class tsunami_lab::setups::DamBreak1d: public Setup {
      **/
     t_real getMomentumY( t_real,
                          t_real ) const;
+
+    /**
+     * Gets the earth quake displacement.
+     * Positive values mean the ground moved upwards.
+     *
+     * @return displacement in meters at the given point.
+     **/
+    t_real getDisplacement( t_real, t_real ) const {
+      return 0;
+    }
 
 };
 
