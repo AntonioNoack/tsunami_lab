@@ -12,6 +12,7 @@ Welcome to Tsunami Simulation's documentation!
   reports/finite_volume_discretization.rst
   reports/bathymetry.rst
   reports/two_dimensions.rst
+  reports/large_data_io.rst
   :maxdepth: 2
   :caption: Contents:
 

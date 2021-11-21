@@ -1,8 +1,13 @@
 # exclude results
 solution_*
+solution.nc
 station_*
+# exclude documentation
 doxygen/*
 build/*
 sphinx/_build/*
+# exclude temporary files
 .sconsign.dblite
 .sconf_temp/*
+tmp.nc
+config.log
