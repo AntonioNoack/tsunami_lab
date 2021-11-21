@@ -2,6 +2,7 @@
  * @author Antonio Noack
  * @section DESCRIPTION
  * An artificial tsunami in a swimming pool for testing; it is kind of 2d.
+ * Notice: The tests for this setup are indirectly included in the test for the TsunamiEvent2d.
  **/ 
 #include "ArtificialTsunami2d.h"
 
