@@ -4,7 +4,6 @@ Welcome to Tsunami Simulation's documentation!
 ==============================================
 
 .. toctree::
-  README.rst
   reports/riemann_solver.rst
   reports/finite_volume_discretization.rst
   reports/bathymetry.rst
