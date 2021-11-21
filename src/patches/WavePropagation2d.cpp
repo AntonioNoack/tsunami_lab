@@ -2,7 +2,7 @@
  * @author Antonio Noack
  * 
  * @section DESCRIPTION
- * One-dimensional wave propagation patch.
+ * Two-dimensional wave propagation patch.
  **/
 #include <algorithm> // std::max
 #include <cmath> // std::sqrt

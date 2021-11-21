@@ -2,7 +2,7 @@
  * @author Antonio Noack
  * 
  * @section DESCRIPTION
- * Unit tests for the two-dimensional wave propagation patch. Repurposed from 1d currently.
+ * Unit tests for the two-dimensional wave propagation patch. Re-purposed from 1d currently.
  **/
 #include <catch2/catch.hpp>
 #include <fstream> // to read csv files
