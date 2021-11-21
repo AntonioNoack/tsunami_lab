@@ -1,7 +1,4 @@
-.. Tsunami Simulation documentation master file, created by
-   sphinx-quickstart on Sun Oct 24 14:00:52 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. Tsunami Simulation documentation master file
 
 Welcome to Tsunami Simulation's documentation!
 ==============================================
@@ -25,7 +22,7 @@ The project is using SCons, so you can build the code using the command "scons".
 
 
 Building the docs
-------------------
+-----------------
 
 Doxygen: "doxygen Doxyfile"
 
@@ -36,15 +33,16 @@ Sphinx: "make html" inside sphinx folder. To list all available formats, use "ma
 
 
 Running the actual program
-----------------------------
+--------------------------
 
-You can run the program via "./build/tsunami_lab <TimeSteps>".
-It will generate a set of csv files containing fluid height and impulse, and the coordinates of the water secions for every 25th time step. Therefore, your number of time steps should be at least 25.
+You can run the program via "./build/tsunami_lab <ConfigurationFile>".
+There are a lot of sample configurations in the config folder, you can use. From these samples, you can create your own scenarios.
 
 
 
 Running the tests
----------------------
+-----------------
+
 You can run all tests via "./build/tests". "-l" as an argument lists all tests. Additional commands can be listed with "-?".
 
 
