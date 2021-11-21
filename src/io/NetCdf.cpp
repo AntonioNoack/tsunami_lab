@@ -68,6 +68,10 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
   // todo units, other axis descriptions
   // define dimensions
   if(l_isFirstFrame){
+    
+    check(nc_put_att_text(l_handle, NC_GLOBAL, "Conventions", 6, "COARDS"));
+	// when we have meaningful x/y coordinates, we can define a long_name for them (https://ferret.pmel.noaa.gov/Ferret/documentation/coards-netcdf-conventions)
+    
     check(nc_def_dim(l_handle, "x",    l_nx,         &l_xDimId));
     check(nc_def_dim(l_handle, "y",    l_ny,         &l_yDimId));
     check(nc_def_dim(l_handle, "time", NC_UNLIMITED, &l_tDimId));
