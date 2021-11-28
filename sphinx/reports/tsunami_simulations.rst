@@ -61,6 +61,16 @@ The total cell update count is NumberOfCells * TotalTimesteps * 2 (one for each 
 
 M = 1e6, B = 1e9.
 
+In the following video, you can see the Chile simulation on a grid with cell size of 1km.
+
+.. figure:: w6-chile-1k.mp4
+	:width: 1
+
+.. raw:: html
+
+	<video style="width: 100%; height: auto" controls><source src="../_images/w6-chile-1k.mp4"></video><br><br>
+
+
 Tohoku Event
 ------------
 
