@@ -4,12 +4,12 @@ Welcome to Tsunami Simulation's documentation!
 ==============================================
 
 .. toctree::
-  README.rst
   reports/riemann_solver.rst
   reports/finite_volume_discretization.rst
   reports/bathymetry.rst
   reports/two_dimensions.rst
   reports/large_data_io.rst
+  reports/tsunami_simulations.rst
   :maxdepth: 2
   :caption: Contents:
 

@@ -21,13 +21,13 @@ TEST_CASE( "Tests for 2d tsunami event.", "[TsunamiEvent2d]" ) {
   tsunami_lab::setups::ArtificialTsunami2d l_baselineSetup;
   
   t_idx l_nx2 = 0, l_ny2 = 0, l_nx3 = 0, l_ny3 = 0;
-  t_real l_cellSizeMeters2 = 0, l_cellSizeMeters3 = 0;
+  t_real l_cellSizeMeters2 = 0, l_cellSizeMeters3 = 0, l_tmp;
   
   std::vector<t_real> l_bath;
   std::vector<t_real> l_disp;
   
-  tsunami_lab::io::NetCDF::load2dArray("data/artificialtsunami_bathymetry_1000.nc", "z", l_nx2, l_ny2, l_cellSizeMeters2, l_bath);// 100 x 100 grid
-  tsunami_lab::io::NetCDF::load2dArray("data/artificialtsunami_displ_1000.nc", "z", l_nx3, l_ny3, l_cellSizeMeters3, l_disp);// 1000 x 1000 grid
+  tsunami_lab::io::NetCDF::load2dArray("data/artificialtsunami_bathymetry_1000.nc", "z", l_nx2, l_ny2, l_cellSizeMeters2, l_tmp, l_tmp, l_bath);// 100 x 100 grid
+  tsunami_lab::io::NetCDF::load2dArray("data/artificialtsunami_displ_1000.nc", "z", l_nx3, l_ny3, l_cellSizeMeters3, l_tmp, l_tmp, l_disp);// 1000 x 1000 grid
   
   tsunami_lab::setups::TsunamiEvent2d l_testedSetup(l_bath.data(), l_nx2, l_ny2, l_nx2, 10, l_disp.data(), l_nx3, l_ny3, l_nx3, 1);
   

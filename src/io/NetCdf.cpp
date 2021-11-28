@@ -8,7 +8,7 @@
 #include "NetCdf.h"
 
 #include <cmath> // isnan
-#include <sstream>
+#include <iostream> // std::cerr
 #include <fstream>
 #include <stdexcept>
 #include <netcdf.h>
@@ -20,7 +20,7 @@
 #define check(error) {\
   l_err = error;\
   if(l_err != NC_NOERR){\
-    printf("NetCDF-Error occurred: %s (Code %d), line %d\n", nc_strerror(l_err), l_err, __LINE__);\
+    std::cerr << "NetCDF-Error occurred: " << nc_strerror(l_err) << " (Code " << l_err << "), line " << __LINE__ << std::endl;\
     return -1;\
   }\
 }
@@ -29,6 +29,8 @@
 int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cellSizeMeters,
                                               t_idx                        i_nx,
                                               t_idx                        i_ny,
+                                              t_real                       i_gridOffsetX,
+                                              t_real                       i_gridOffsetY,
                                               t_idx                        i_step,
                                               t_idx                        i_stride,
                                               t_real               const * i_h,
@@ -38,16 +40,23 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
                                               tsunami_lab::setups::Setup * i_setup,
                                               t_real                       i_time,
                                               t_idx                        i_frameIndex,
+                                              int                          i_deflateLevel,
                                               std::string                  i_fileName ) {
 
   int l_err;
+  
+  bool l_deflate = i_deflateLevel > 0;
+  
+  // reorders high and low bytes such that first all high bytes are written, then the low bytes.
+  // is said to be useless for deflate level = 9. In my test, testing config/tsunami2d-tohoku.yaml, this was incorrect
+  bool l_shuffle = l_deflate;
   
   bool l_isFirstFrame = i_frameIndex <= 0;
   
   int l_handle;// file handle
   
   if(l_isFirstFrame){
-    check(nc_create(i_fileName.c_str(), NC_CLOBBER, &l_handle));
+    check(nc_create(i_fileName.c_str(), NC_CLOBBER | NC_NETCDF4, &l_handle));
   } else {
     check(nc_open(i_fileName.c_str(), NC_WRITE, &l_handle));
   }
@@ -70,7 +79,7 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
   if(l_isFirstFrame){
     
     check(nc_put_att_text(l_handle, NC_GLOBAL, "Conventions", 6, "COARDS"));
-	// when we have meaningful x/y coordinates, we can define a long_name for them (https://ferret.pmel.noaa.gov/Ferret/documentation/coards-netcdf-conventions)
+    // when we have meaningful x/y coordinates, we can define a long_name for them (https://ferret.pmel.noaa.gov/Ferret/documentation/coards-netcdf-conventions)
     
     check(nc_def_dim(l_handle, "x",    l_nx,         &l_xDimId));
     check(nc_def_dim(l_handle, "y",    l_ny,         &l_yDimId));
@@ -79,6 +88,10 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
     check(nc_def_var(l_handle, "x",    NC_FLOAT, 1, &l_xDimId, &l_xVarId));
     check(nc_def_var(l_handle, "y",    NC_FLOAT, 1, &l_yDimId, &l_yVarId));
     check(nc_def_var(l_handle, "time", NC_FLOAT, 1, &l_tDimId, &l_tVarId));
+    
+    check(nc_def_var_deflate(l_handle, l_xVarId, l_shuffle, l_deflate, i_deflateLevel));
+    check(nc_def_var_deflate(l_handle, l_yVarId, l_shuffle, l_deflate, i_deflateLevel));
+    check(nc_def_var_deflate(l_handle, l_tVarId, l_shuffle, l_deflate, i_deflateLevel));
     
     check(nc_put_att_text(l_handle, l_xVarId, "units", 1, "m"));// strlen(DEGREES_NORTH), DEGREES_NORTH
     check(nc_put_att_text(l_handle, l_yVarId, "units", 1, "m"));
@@ -91,30 +104,39 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
     if(i_h){
       check(nc_def_var(l_handle, "height",     NC_FLOAT, 3, dims3, &l_heightId));
       check(nc_put_att_text(l_handle, l_heightId, "units", 1, "m"));
+      check(nc_def_var_deflate(l_handle, l_heightId, l_shuffle, l_deflate, i_deflateLevel));
     }
     if(i_hu){
       check(nc_def_var(l_handle, "momentumX",  NC_FLOAT, 3, dims3, &l_momentumXId));
       check(nc_put_att_text(l_handle, l_momentumXId, "units", 5, "m*m/s"));// height * velocity
+      check(nc_def_var_deflate(l_handle, l_momentumXId, l_shuffle, l_deflate, i_deflateLevel));
     }
     if(i_hv){
       check(nc_def_var(l_handle, "momentumY",  NC_FLOAT, 3, dims3, &l_momentumYId));
       check(nc_put_att_text(l_handle, l_momentumYId, "units", 5, "m*m/s"));
+      check(nc_def_var_deflate(l_handle, l_momentumYId, l_shuffle, l_deflate, i_deflateLevel));
     }
     if(i_b){
       check(nc_def_var(l_handle, "bathymetry", NC_FLOAT, 2, dims2, &l_bathymetryId));
       check(nc_put_att_text(l_handle, l_bathymetryId, "units", 1, "m"));
+      check(nc_def_var_deflate(l_handle, l_bathymetryId, l_shuffle, l_deflate, i_deflateLevel));
     }
     if(i_setup){
       check(nc_def_var(l_handle, "displacement", NC_FLOAT, 2, dims2, &l_displacementId));
       check(nc_put_att_text(l_handle, l_displacementId, "units", 1, "m"));
+      check(nc_def_var_deflate(l_handle, l_displacementId, l_shuffle, l_deflate, i_deflateLevel));
     }
     
     // end definition mode
     check(nc_enddef(l_handle));
     
     // nx*ny >= max(nx,ny) (because nx >= 1, ny >= 1), so we can reuse l_dataWithoutStride
-    for(int i=0,j=0,l=std::max(l_nx,l_ny);j<l;i+=i_step,j++) l_dataWithoutStride[j] = (i+0.5) * i_cellSizeMeters;
-    check(nc_put_var_float(l_handle, l_xVarId, l_dataWithoutStride.data()));// x and y axis share the same values, so we have to write them only once
+	// once + 0.5 * cellSizeMeters, but since gridOffset now will contain the values from the loaded bathymetry for tsunamis,
+	// we will just return the same coordinates as the input file
+    for(int i=0,j=0,l=std::max(l_nx,l_ny);j<l;i+=i_step,j++) l_dataWithoutStride[j] = i * i_cellSizeMeters + i_gridOffsetX;
+    check(nc_put_var_float(l_handle, l_xVarId, l_dataWithoutStride.data()));
+    
+    for(int i=0,j=0,l=std::max(l_nx,l_ny);j<l;i+=i_step,j++) l_dataWithoutStride[j] = i * i_cellSizeMeters + i_gridOffsetY;
     check(nc_put_var_float(l_handle, l_yVarId, l_dataWithoutStride.data()));
     
   } else {
@@ -203,7 +225,9 @@ int tsunami_lab::io::NetCDF::load2dArray( std::string           i_fileName,
                                           t_idx               & o_sizeX,
                                           t_idx               & o_sizeY,
                                           t_real              & o_cellSizeMeters,
-                                          std::vector<t_real> & o_data) {
+                                          t_real              & o_gridOffsetX,
+                                          t_real              & o_gridOffsetY,
+                                          std::vector<t_real> & o_data ) {
   
   int l_err;
   
@@ -237,11 +261,16 @@ int tsunami_lab::io::NetCDF::load2dArray( std::string           i_fileName,
   check(nc_get_vara_float(l_handle, l_xVarId, l_startVec0, l_countVec0, (float*) o_data.data()));
   
   o_cellSizeMeters = (o_data[o_sizeX-1] - o_data[0]) / (o_sizeX - 1);
+  o_gridOffsetX = o_data[1];// the first one is used as ghost zone
+  
+  l_countVec0[0] = 2;
+  check(nc_get_vara_float(l_handle, l_yVarId, l_startVec0, l_countVec0, (float*) o_data.data()));
+  o_gridOffsetY = o_data[1];// the first one is used as ghost zone
   
   // read in the main variable
   size_t l_startVec[2] = { 0, 0 };
   size_t l_countVec[2] = { o_sizeY, o_sizeX };// fastest dimensions are last
-  if(sizeof(t_real) == 4){// this check may be doable in the pre-compiler somehow as well
+  if(sizeof(t_real) == 4){// this check may be doable in the precompiler somehow as well
     check(nc_get_vara_float(l_handle, l_zVarId, l_startVec, l_countVec, (float*) o_data.data()));
   } else {
     check(nc_get_vara_double(l_handle, l_zVarId, l_startVec, l_countVec, (double*) o_data.data()));
@@ -262,5 +291,3 @@ int tsunami_lab::io::NetCDF::load2dArray( std::string           i_fileName,
   return EXIT_SUCCESS;
   
 }
-
-#undef check

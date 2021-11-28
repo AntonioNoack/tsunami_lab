@@ -19,10 +19,11 @@ tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getBathymetry( t_r
 }
 
 tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getDisplacement( t_real i_x, t_real i_y ) const {
-  t_real l_x = (i_x - 500)/500;// i_x always starts at zero, not at -500, then convert them to the [-1,1], as used by the formula
-  t_real l_y = (i_y - 500)/500;
+  t_real l_x = (i_x - 500)/500 + m_offsetX;// i_x always starts at zero, not at -500, then convert them to the [-1,1], as used by the formula
+  t_real l_y = (i_y - 500)/500 + m_offsetY;
+  if(l_x < -1 || l_x > +1 || l_y < -1 || l_y > +1) return 0;
   t_real l_f = -std::sin(l_x * M_PI);// sin(x+pi) = -sin(x)
-  t_real l_g = 1 - l_y*l_y;
+  t_real l_g = 1 - l_y * l_y;
   return 5 * l_f * l_g;
 }
 

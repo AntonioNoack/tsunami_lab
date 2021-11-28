@@ -7,6 +7,7 @@
 #include <catch2/catch.hpp>
 #include "../constants.h"
 #include <sstream>
+#include <iostream>
 #include <netcdf.h>
 
 #define private public
@@ -23,13 +24,14 @@
 #define check(error) {\
   l_err = error;\
   if(l_err != NC_NOERR){\
-    printf("NetCDF-Error occurred: %s (Code %d), line %d\n", nc_strerror(l_err), l_err, __LINE__);\
+    std::cerr << "NetCDF-Error occurred: " << nc_strerror(l_err) << " (Code " << l_err << "), line " << __LINE__ << std::endl;\
     REQUIRE(l_err == NC_NOERR);\
   }\
 }
 
 TEST_CASE( "Test the NetCDF-writer to append data.", "[NetCDF][AppendData]" ) {
 
+  int l_deflateLevel = 5;
   
   // define a simple example
   t_real l_h [16]  = { 0,  1,  2,  3,
@@ -51,13 +53,15 @@ TEST_CASE( "Test the NetCDF-writer to append data.", "[NetCDF][AppendData]" ) {
                        1,  0, -1, -3 };
 
   t_real l_cellSizeMeters = 10;
+  t_real l_gridOffsetX = l_cellSizeMeters * 0.5;
+  t_real l_gridOffsetY = l_cellSizeMeters * 0.5;
   t_idx l_nx = 4, l_ny = 4, l_nt = 3;
   t_idx l_step = 1, l_stride = l_nx;
   
   std::string l_fileName = "tmp.nc";
   
   for(t_idx i=0;i<l_nt;i++){
-    tsunami_lab::io::NetCDF::appendTimeframe(l_cellSizeMeters, l_nx, l_ny, l_step, l_stride, l_h, l_hu, l_hv, l_b, nullptr, (t_real) (i * 0.5), i, l_fileName);
+    tsunami_lab::io::NetCDF::appendTimeframe(l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_step, l_stride, l_h, l_hu, l_hv, l_b, nullptr, (t_real) (i * 0.5), i, l_deflateLevel, l_fileName);
   }
   
   int l_err;
@@ -91,15 +95,11 @@ TEST_CASE( "Test the NetCDF-reading functionality for a 2d field named z.", "[Ne
   t_idx l_sizeX = 0, l_sizeY = 0;
   t_real l_cellSizeMeters = 0;
   std::vector<t_real> l_data;
-  tsunami_lab::io::NetCDF::load2dArray("data/netcdf-test.nc", "z", l_sizeX, l_sizeY, l_cellSizeMeters, l_data);
+  t_real l_tmp;
+  tsunami_lab::io::NetCDF::load2dArray("data/netcdf-test.nc", "z", l_sizeX, l_sizeY, l_cellSizeMeters, l_tmp, l_tmp, l_data);
   REQUIRE(l_sizeX == 4);
   REQUIRE(l_sizeY == 3);
   REQUIRE(l_cellSizeMeters == Approx(2.0));
   REQUIRE(l_data.size() == 12);
   for(int i=0;i<12;i++) REQUIRE(l_data[i] == i);
 }
-// we could create a test, where we read and write data; issue: we only read in z, and output height/bathymetry/momentum currently
-
-#undef t_idx
-#undef t_real
-#undef check

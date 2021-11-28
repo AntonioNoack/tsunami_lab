@@ -12,8 +12,7 @@ bool tsunami_lab::io::Station::needsUpdate( t_real i_time ) {
   return m_nextRecordTime <= i_time;
 }
 
-void tsunami_lab::io::Station::recordState( tsunami_lab::patches::WavePropagation &i_waveProp,
-                                            t_real i_time ) {
+void tsunami_lab::io::Station::recordState( tsunami_lab::patches::WavePropagation &i_waveProp, t_real i_time ) {
   t_idx l_index = m_positionX + m_positionY * i_waveProp.getStride();
   auto l_hPtr = i_waveProp.getHeight();// somehow in the sanitizer this has become null... how?
   t_real l_h  = l_hPtr ? l_hPtr[l_index] : 0;

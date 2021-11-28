@@ -20,6 +20,9 @@
 #include <map>
 #include <fstream>
 #include <limits> // infinity, max int
+#include <chrono> // measuring performance
+#include <sys/stat.h> // check whether a file exists
+#include <omp.h> // for max threads
 
 #include <yaml-cpp/yaml.h>
 
@@ -48,19 +51,20 @@ std::string trim(std::string l_s) {// somehow not part of the C++ standard
   return l_s.substr(l_i0, l_i1 - l_i0);
 }
 
-bool readBoolean(YAML::Node &i_config, std::string i_key, bool i_defaultValue) {
-  if(!i_config[i_key]) return i_defaultValue;
-  return i_config[i_key].as<bool>();
+template<typename T>
+T readOrDefault(YAML::Node &i_config, std::string i_key, T i_defaultValue) {
+  try {
+    if(!i_config[i_key]) return i_defaultValue;
+    return i_config[i_key].as<T>();
+  } catch(const YAML::Exception &ex) {
+    std::cout << ex.what() << " for key '" << i_key << "', value '" << i_config[i_key].as<std::string>() << "', and type " << typeid(T).name() << std::endl;
+    return i_defaultValue;
+  }
 }
 
-t_idx readInt(YAML::Node &i_config, std::string i_key, t_idx i_defaultValue) {
-  if(!i_config[i_key]) return i_defaultValue;
-  return i_config[i_key].as<t_idx>();
-}
-
-t_real readFloat(YAML::Node &i_config, std::string i_key, t_real i_defaultValue) {
-  if(!i_config[i_key]) return i_defaultValue;
-  return i_config[i_key].as<t_real>();
+bool fileExists(std::string i_fileName){
+  struct stat buffer;   
+  return stat(i_fileName.c_str(), &buffer) == 0;
 }
 
 int main( int i_argc, char *i_argv[] ) {
@@ -86,25 +90,25 @@ int main( int i_argc, char *i_argv[] ) {
   
   // many setups share similar setup information, so just request them all at once;
   // it should not matter for performance, as this all will be done within 1ms.
-  t_idx  l_nx              =   readInt(l_config, "nx",  1);
-  t_idx  l_ny              =   readInt(l_config, "ny",  1);
-  t_real l_heightLeft      = readFloat(l_config, "hl", 10);
-  t_real l_heightRight     = readFloat(l_config, "hr",  5);
-  t_real l_impulseLeft     = readFloat(l_config, "hul", 0);
-  t_real l_impulseRight    = readFloat(l_config, "hur", 0);
-  t_real l_bathymetryLeft  = readFloat(l_config, "bl",  0);
-  t_real l_bathymetryRight = readFloat(l_config, "br",  0);
-  t_real l_damBathymetry   = readFloat(l_config, "bathymetry", 0);// bathymetry for 1d and 2d dam
+  t_idx  l_nx              = readOrDefault<t_idx >(l_config, "nx",  1);
+  t_idx  l_ny              = readOrDefault<t_idx >(l_config, "ny",  1);
+  t_real l_heightLeft      = readOrDefault<t_real>(l_config, "hl", 10);
+  t_real l_heightRight     = readOrDefault<t_real>(l_config, "hr",  5);
+  t_real l_impulseLeft     = readOrDefault<t_real>(l_config, "hul", 0);
+  t_real l_impulseRight    = readOrDefault<t_real>(l_config, "hur", 0);
+  t_real l_bathymetryLeft  = readOrDefault<t_real>(l_config, "bl",  0);
+  t_real l_bathymetryRight = readOrDefault<t_real>(l_config, "br",  0);
+  t_real l_damBathymetry   = readOrDefault<t_real>(l_config, "bathymetry", 0);// bathymetry for 1d and 2d dam
   // (dam bathymetry) caution: values above zero mean stopped fluid, because they mean a dry area, and the solver does not support wetting/drying.
-  t_real l_splitPositionX  = readFloat(l_config, "splitPositionX", l_nx * 0.5);
-  t_real l_splitPositionY  = readFloat(l_config, "splitPositionY", l_ny * 0.5);
-  t_real l_damRadius       = readFloat(l_config, "damRadius", l_nx / 4);
-  t_real l_cellSizeMeters  = readFloat(l_config, "cellSize", 1);// size of a single cell in meters
-  t_idx  l_maxTimesteps    =   readInt(l_config, "maxSteps", std::numeric_limits<t_idx>::max());// max number of simulation timesteps
-  t_real l_maxDuration     = readFloat(l_config, "maxDuration", std::numeric_limits<t_real>::infinity());// max simulation time in seconds
-  t_real l_outputPeriod    = readFloat(l_config, "outputPeriod", 1);// every n th second, a result file will be written
-  t_idx  l_outputStepSize  =   readInt(l_config, "outputStepSize", 1);// n = every nth field is written to disk; saves storage space
-  t_real l_scale           = readFloat(l_config, "scale", 1);// scales the setup for accuracy or performance
+  t_real l_splitPositionX  = readOrDefault<t_real>(l_config, "splitPositionX", l_nx * 0.5);
+  t_real l_splitPositionY  = readOrDefault<t_real>(l_config, "splitPositionY", l_ny * 0.5);
+  t_real l_damRadius       = readOrDefault<t_real>(l_config, "damRadius", l_nx / 4);
+  t_real l_cellSizeMeters  = readOrDefault<t_real>(l_config, "cellSize", 1);// size of a single cell in meters
+  t_idx  l_maxTimesteps    = readOrDefault<t_idx >(l_config, "maxSteps", std::numeric_limits<t_idx>::max());// max number of simulation timesteps
+  t_real l_maxDuration     = readOrDefault<t_real>(l_config, "maxDuration", std::numeric_limits<t_real>::infinity());// max simulation time in seconds
+  t_real l_outputPeriod    = readOrDefault<t_real>(l_config, "outputPeriod", 1);// every n th second, a result file will be written
+  t_idx  l_outputStepSize  = readOrDefault<t_idx >(l_config, "outputStepSize", 1);// n = every nth field is written to disk; saves storage space
+  t_real l_scale           = readOrDefault<t_real>(l_config, "scale", 1);// scales the setup for accuracy or performance
   
   // we could/should write a few warnings to console, if any of these happen
   if(l_nx < 1) l_nx = 1;
@@ -119,29 +123,17 @@ int main( int i_argc, char *i_argv[] ) {
     return EXIT_FAILURE;
   }
   
-  bool l_printStationComments = readBoolean(l_config, "printStationComments", true);
-  if(l_config["stations"]) {
-    auto   l_stationData = l_config["stations"].as<std::vector<YAML::Node>>();
-    t_real l_delayBetweenRecords = readFloat(l_config, "delayBetweenRecords", 1);
-    for(t_idx i=0;i<l_stationData.size();i++){
-      auto l_station = l_stationData[i];
-      std::string l_name = l_station["name"].as<std::string>();
-      int64_t     l_x    = l_station["x"].as<int64_t>();
-      int64_t     l_y    = l_station["y"].as<int64_t>();
-      if(l_x >= 0 && (t_idx) l_x < l_nx && l_y >= 0 && (t_idx) l_y < l_ny){
-        tsunami_lab::io::Station l_station1((t_idx) l_x, (t_idx) l_y, l_name, l_delayBetweenRecords);
-        l_stations.push_back(l_station1);
-      } else {
-        std::cerr << "Station " << i << ", called '" << l_name << "' is out of bounds: " << l_x << "," << l_y << " !in 0.." << l_nx << ",0.." << l_ny << std::endl;
-        std::cerr << "This invalid entry was found in the file '" << i_argv[1] << "'" << std::endl;
-        return EXIT_FAILURE;
-      }
-    }
-  }
+  ////////////////
+  // read setup //
+  ////////////////
+  std::string l_setupName = readOrDefault<std::string>(l_config, "setup", "Discontinuity1d");
+  if(!l_config["setup"]) std::cout << "using default setup: " << l_setupName << std::endl;
   
-  std::string l_setupName = "Discontinuity1d";
-  if(l_config["setup"]) l_setupName = l_config["setup"].as<std::string>();
-  else std::cout << "using default setup: " << l_setupName << std::endl;
+  auto l_performanceTime0 = std::chrono::high_resolution_clock::now();
+  
+  // coordinates of the top left corner in the loaded tsunami data; used for stations
+  // if not defined, this is the center of that corner
+  t_real l_gridOffsetX = l_cellSizeMeters * 0.5, l_gridOffsetY = l_cellSizeMeters * 0.5;
   
   // must stay in scope; I don't have a better solution currently; maybe the value could be moved into setup
   // a copy shouldn't be expensive compared to our simulation and writing the results to disk
@@ -161,11 +153,11 @@ int main( int i_argc, char *i_argv[] ) {
     if(l_config["obstacleBathymetry"]) {
       // an obstacle should be defined
       l_dambreak2d->setObstacle(
-        readFloat(l_config, "obstacleX0", 0),
-        readFloat(l_config, "obstacleX1", 0), 
-        readFloat(l_config, "obstacleY0", 0),
-        readFloat(l_config, "obstacleY1", 0), 
-        readFloat(l_config, "obstacleBathymetry", 0)
+        readOrDefault(l_config, "obstacleX0", 0),
+        readOrDefault(l_config, "obstacleX1", 0), 
+        readOrDefault(l_config, "obstacleY0", 0),
+        readOrDefault(l_config, "obstacleY1", 0), 
+        readOrDefault(l_config, "obstacleBathymetry", 0)
       );
     }
     l_setup = l_dambreak2d;
@@ -181,7 +173,13 @@ int main( int i_argc, char *i_argv[] ) {
     if(l_config["setupFile"]){
       
       // load the data from the csv file
-      auto l_loadedData = tsunami_lab::io::Csv::read(l_config["setupFile"].as<std::string>());
+      auto l_fileName = l_config["setupFile"].as<std::string>();
+      if(!fileExists(l_fileName)){
+        std::cerr << "could not find setup '" << l_fileName << "'" << std::endl;
+        return EXIT_FAILURE;
+      }
+      
+      auto l_loadedData = tsunami_lab::io::Csv::read(l_fileName);
       
       // here we probably copy; this potentially could be optimized
       auto l_xs = tsunami_lab::io::Csv::findColumn(l_loadedData, "track_location");
@@ -200,9 +198,9 @@ int main( int i_argc, char *i_argv[] ) {
       l_nx = l_xs.size() * l_scale - 2;// 2 = ghost cells
       l_ny = 1;// it's just a 1d simulation
       
-      t_real l_displacementStart  = readFloat(l_config, "displacementStart", 175000) / l_cellSizeMeters;
-      t_real l_displacementEnd    = readFloat(l_config, "displacementEnd",   250000) / l_cellSizeMeters;
-      t_real l_displacementHeight = readFloat(l_config, "displacement", 10);
+      t_real l_displacementStart  = readOrDefault<t_real>(l_config, "displacementStart", 175000) / l_cellSizeMeters;
+      t_real l_displacementEnd    = readOrDefault<t_real>(l_config, "displacementEnd",   250000) / l_cellSizeMeters;
+      t_real l_displacementHeight = readOrDefault<t_real>(l_config, "displacement", 10);
       
       // construct setup
       l_setup = new tsunami_lab::setups::TsunamiEvent1d(l_bathymetry.data(), l_bathymetry.size(), 1/l_scale, l_displacementStart, l_displacementEnd, l_displacementHeight);
@@ -215,6 +213,7 @@ int main( int i_argc, char *i_argv[] ) {
     l_setupName == "Tsunami2d" ||
     l_setupName == "NetCDF"
   ){
+    
     if(!l_config["bathymetryFile"]){
       std::cerr << "missing parameter 'bathymetryFile' for setup type Tsunami2d/NetCDF" << std::endl;
       return EXIT_FAILURE;
@@ -223,13 +222,30 @@ int main( int i_argc, char *i_argv[] ) {
       std::cerr << "missing parameter 'displacementFile' for setup type Tsunami2d/NetCDF" << std::endl;
       return EXIT_FAILURE;
     }
+    
+    auto l_bathymetryFileName = l_config["bathymetryFile"].as<std::string>();
+    auto l_displacementFileName = l_config["displacementFile"].as<std::string>();
+    if(l_bathymetryFileName == l_displacementFileName){// as long as the property is not yet customizable
+      std::cout << "---------------------------------------------------------" << std::endl;
+      std::cout << "warning: bathymetry and displacement share the same data!" << std::endl;
+      std::cout << "---------------------------------------------------------" << std::endl;
+    }
+    if(!fileExists(l_bathymetryFileName)){
+      std::cerr << "could not find bathymetry file '" << l_bathymetryFileName << "'" << std::endl;
+      return EXIT_FAILURE;
+    } else if(!fileExists(l_displacementFileName)){
+      std::cerr << "could not find displacement file '" << l_displacementFileName << "'" << std::endl;
+      return EXIT_FAILURE;
+    }
+    
     // load data
     t_idx l_nx2, l_ny2;
     t_real l_cellSizeMeters2;
-    tsunami_lab::io::NetCDF::load2dArray(l_config["bathymetryFile"].as<std::string>(), "z", l_nx, l_ny, l_cellSizeMeters2, l_bathymetry);
-    tsunami_lab::io::NetCDF::load2dArray(l_config["displacementFile"].as<std::string>(), "z", l_nx2, l_ny2, l_cellSizeMeters2, l_displacement);
+    t_real l_tmp;
+    tsunami_lab::io::NetCDF::load2dArray(l_bathymetryFileName, "z", l_nx, l_ny, l_cellSizeMeters2, l_gridOffsetX, l_gridOffsetY, l_bathymetry);
+    tsunami_lab::io::NetCDF::load2dArray(l_displacementFileName, "z", l_nx2, l_ny2, l_cellSizeMeters2, l_tmp, l_tmp, l_displacement);
     if(l_cellSizeMeters == 1.0){
-      l_cellSizeMeters = l_cellSizeMeters2;
+      l_cellSizeMeters = l_cellSizeMeters2 / l_scale;// cell size depends on data & applied scale
     } else std::cout << "used cell size override from config. Cell size from file: " << l_cellSizeMeters2 << std::endl;
     t_real l_sideRatio = (l_nx2 * l_ny) / (t_real) (l_ny2 * l_nx); // ideally 1
     if(l_sideRatio < 0.99 || l_sideRatio > 1.01){
@@ -272,8 +288,69 @@ int main( int i_argc, char *i_argv[] ) {
     return EXIT_FAILURE;
   }
   
+  ///////////////////
+  // read stations //
+  ///////////////////
+  bool l_printStationComments = readOrDefault(l_config, "printStationComments", true);
+  if(l_config["stations"]) {
+    auto   l_stationData = l_config["stations"].as<std::vector<YAML::Node>>();
+    t_real l_delayBetweenRecords = readOrDefault(l_config, "delayBetweenRecords", 1);
+    for(t_idx i=0;i<l_stationData.size();i++){
+      
+      auto l_station = l_stationData[i];
+      std::string l_name = l_station["name"].as<std::string>();
+      
+      int64_t l_x, l_y;
+      if(l_station["x"]){
+        
+        l_x = l_station["x"].as<int64_t>();
+        l_y = l_station["y"].as<int64_t>();
+        
+      } else if(l_station["gridX"]){
+        
+        t_real l_x0 = l_station["gridX"].as<double>();
+        t_real l_y0 = l_station["gridY"].as<double>();
+        
+        l_x = (l_x0 - l_gridOffsetX) / l_cellSizeMeters;
+        l_y = (l_y0 - l_gridOffsetY) / l_cellSizeMeters;
+        
+        std::cout << "Station " << i << ", '" << l_name << "' with input grid coordinates (" << l_x0 << ", " << l_y0 << ") was mapped to simulation grid coordinates (" << l_x << ", " << l_y << ")" << std::endl;
+        
+      } else {
+        
+        std::cerr << "Missing location for station '" << l_name << "'" << std::endl;
+        return EXIT_FAILURE;
+        
+      }
+      
+      if(l_x >= 0 && (t_idx) l_x < l_nx && l_y >= 0 && (t_idx) l_y < l_ny){
+        t_real l_stationBathymetry = l_setup->getBathymetry(l_x * l_scale, l_y * l_scale);
+        if(l_stationBathymetry <= 0){
+          tsunami_lab::io::Station l_station1((t_idx) l_x, (t_idx) l_y, l_name, l_delayBetweenRecords);
+          l_stations.push_back(l_station1);
+          std::cout << "Station " << i << ", '" << l_name << "' was placed on bathymetry " << l_stationBathymetry << std::endl;
+        } else {
+          std::cerr << "Station " << i << ", '" << l_name << "' is above sea level: " << l_stationBathymetry << std::endl;
+          return EXIT_FAILURE;
+        }
+      } else {
+        std::cerr << "Station " << i << ", '" << l_name << "' is out of bounds: " << l_x << "," << l_y << " !in 0.." << l_nx << ",0.." << l_ny << std::endl;
+        std::cerr << "This invalid entry was found in the file '" << i_argv[1] << "'" << std::endl;
+        return EXIT_FAILURE;
+      }
+    }
+  }
+  
+  
+  auto l_performanceTime1 = std::chrono::high_resolution_clock::now();
+  double l_dur0 = std::chrono::duration<double>(l_performanceTime1-l_performanceTime0).count();
+  
+  std::cout << "used " << l_dur0 << "s to load setup" << std::endl;
+  
   // run simulation
   std::cout << "runtime configuration" << std::endl;
+  std::cout << "  configuration file:             " << i_argv[1] << std::endl;
+  std::cout << "  setup type:                     " << l_setupName << std::endl;
   std::cout << "  max timesteps:                  " << l_maxTimesteps << std::endl;
   std::cout << "  max duration:                   " << l_maxDuration << std::endl;
   std::cout << "  number of cells in x-direction: " << l_nx << std::endl;
@@ -283,6 +360,7 @@ int main( int i_argc, char *i_argv[] ) {
   std::cout << "  split position x:               " << l_splitPositionX << std::endl;
   std::cout << "  split position y:               " << l_splitPositionY << std::endl;
   std::cout << "  applied scale:                  " << l_scale << std::endl;
+  std::cout << "  OpenMP threads:                 " << omp_get_max_threads() << std::endl;
   
   for(t_idx l_i=0;l_i<1000;l_i++){
     // delete all old files;
@@ -296,32 +374,45 @@ int main( int i_argc, char *i_argv[] ) {
   if(l_ny <= 1){
     l_waveProp = new tsunami_lab::patches::WavePropagation1d(l_nx, l_setup, l_scale);
   } else {
-    l_waveProp = new tsunami_lab::patches::WavePropagation2d(l_nx, l_ny, l_setup, l_scale, l_scale, readFloat(l_config, "cflFactor", 0.45));
+    t_real l_cflFactor = readOrDefault<t_real>(l_config, "cflFactor", 0.45);
+    l_waveProp = new tsunami_lab::patches::WavePropagation2d(l_nx, l_ny, l_setup, l_scale, l_scale, l_cflFactor);
   }
 
   // set up print control
   t_idx  l_nOut = 0;
   t_real l_timestep;
   
-  double l_time = 0;
+  double l_simulationTime = 0;
 
   std::cout << "entering time loop" << std::endl;
   
-  std::string l_netCdfPath = "solution.nc";
-  bool l_exportCSV = readBoolean(l_config, "exportCSV", false);
+  std::string l_netCdfPath = readOrDefault<std::string>(l_config, "outputFile", "solution.nc");
+  int  l_deflateLevel = readOrDefault<int>(l_config, "outputCompression", 5);
+  bool l_exportCSV = readOrDefault(l_config, "exportCSV", false);
+  
+  auto l_performanceTimeI0 = std::chrono::high_resolution_clock::now();
 
   // iterate over time
   t_idx l_lastOutputIndex = -1;
-  t_idx l_timeStepIndex = 0;
-  for(; l_timeStepIndex < l_maxTimesteps && l_time < l_maxDuration; l_timeStepIndex++ ){
-
+  t_idx l_timeStepIndex = 0, l_timeStepIndex0 = 0;
+  for(; l_timeStepIndex < l_maxTimesteps && l_simulationTime < l_maxDuration; l_timeStepIndex++ ){
+    
+    auto l_performanceTimeI1 = std::chrono::high_resolution_clock::now();
+    double l_durI = std::chrono::duration<double>(l_performanceTimeI1-l_performanceTimeI0).count();
+    if(l_durI >= 1.0){
+      double l_stepsPerSecond = (l_timeStepIndex - l_timeStepIndex0) / l_durI;
+      std::cout << "step: " << l_timeStepIndex << ", simulation time: " << l_simulationTime << ", steps per second: " << l_stepsPerSecond << std::endl;
+      l_performanceTimeI0 = l_performanceTimeI1;
+      l_timeStepIndex0 = l_timeStepIndex;
+    }
+    
     // index, which frame we'd need to print theoretically
     // if there are more frames requested than simulated, we just skip some
-    t_idx l_outputIndex = (t_idx) (l_time / l_outputPeriod);
+    t_idx l_outputIndex = (t_idx) (l_simulationTime / l_outputPeriod);
     if(l_timeStepIndex == 0 || l_lastOutputIndex != l_outputIndex) {
       l_lastOutputIndex = l_outputIndex;
       
-      std::cout << "  simulation time: " << l_time << ", #time steps: "<< l_timeStepIndex << std::endl;
+      std::cout << "  simulation time: " << l_simulationTime << ", #time steps: "<< l_timeStepIndex << std::endl;
       
       if(l_exportCSV){
         
@@ -333,7 +424,7 @@ int main( int i_argc, char *i_argv[] ) {
         l_file.close();
         
       } else {
-        if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_time, l_nOut, l_netCdfPath)) return EXIT_FAILURE;
+        if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_simulationTime, l_nOut, l_deflateLevel, l_netCdfPath)) return EXIT_FAILURE;
       }
       
       l_nOut++;
@@ -341,9 +432,9 @@ int main( int i_argc, char *i_argv[] ) {
     }
     
     // update recording stations, if there are any
-    if(!l_stations.empty() && l_stations[0].needsUpdate(l_time)) {
+    if(!l_stations.empty() && l_stations[0].needsUpdate(l_simulationTime)) {
       for(auto &l_station : l_stations) {
-        l_station.recordState(*l_waveProp, l_time);
+        l_station.recordState(*l_waveProp, l_simulationTime);
       }
     }
 
@@ -357,13 +448,18 @@ int main( int i_argc, char *i_argv[] ) {
     t_real l_scaling = l_timestep / l_cellSizeMeters;
     l_waveProp->timeStep(l_scaling);
 
-    l_time += l_timestep;
+    l_simulationTime += l_timestep;
   }
   
   std::cout << "finished time loop" << std::endl;
   
   // print last state
-  std::cout << "  simulation end time: " << l_time << ", #total time steps: "<< l_timeStepIndex << std::endl;
+  std::cout << "  simulation end time: " << l_simulationTime << ", #total time steps: "<< l_timeStepIndex << std::endl;
+  
+  auto l_performanceTimeN = std::chrono::high_resolution_clock::now();
+  double l_durN = std::chrono::duration<double>(l_performanceTimeN-l_performanceTime1).count();
+  double l_stepsPerSecond = l_timeStepIndex / l_durN;
+  std::cout << "average steps per second: " << l_stepsPerSecond << ", total simulation time: " << l_durN << std::endl;
   
   if(l_exportCSV){
       
@@ -375,9 +471,10 @@ int main( int i_argc, char *i_argv[] ) {
     l_file.close();
     
   } else {
-    if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_time, l_nOut, l_netCdfPath)) return EXIT_FAILURE;
+    if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_simulationTime, l_nOut, l_deflateLevel, l_netCdfPath)) return EXIT_FAILURE;
   }
   
+  // todo init files once, then only append the measurements
   for(auto &l_station : l_stations){
     l_station.write(l_printStationComments);
   }

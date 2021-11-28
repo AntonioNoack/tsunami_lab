@@ -132,6 +132,3 @@ TEST_CASE( "Test the CSV Reader", "[CSVReader]" ) {
   }
   
 }
-
-#undef t_idx
-#undef t_real

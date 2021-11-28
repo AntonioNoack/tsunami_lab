@@ -19,6 +19,3 @@ TEST_CASE( "Test the stations.", "[Station]" ) {
   REQUIRE( station.needsUpdate(10 + 1.4) == false );
   REQUIRE( station.needsUpdate(10 + 1.6) == true );
 }
-
-#undef t_idx
-#undef t_real

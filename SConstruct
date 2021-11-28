@@ -94,8 +94,9 @@ for lib in libs:
     externalLibs.append(lib)
   else:
     print(f'libary {lib} was not found!')
-env.Append( CXXFLAGS = [ '-lnetcdf' ] )
-env.Append( LINKFLAGS = [ '-lnetcdf' ] )
+
+env.Append( CXXFLAGS = [ '-fopenmp' ] )
+env.Append( LINKFLAGS = [ '-fopenmp' ] )
 
 # get source files
 VariantDir( variant_dir = 'build/src',

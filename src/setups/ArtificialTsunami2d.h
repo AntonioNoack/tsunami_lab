@@ -21,6 +21,9 @@ namespace tsunami_lab {
  * 2d dam break setup.
  **/
 class tsunami_lab::setups::ArtificialTsunami2d: public Setup {
+  private:
+    // offset of the displacement
+    t_real m_offsetX, m_offsetY;
   public:
     /**
      * Constructor.
@@ -68,4 +71,4 @@ class tsunami_lab::setups::ArtificialTsunami2d: public Setup {
     
 };
 
-#endif // TSUNAMI_LAB_SETUPS_TSUNAMI_EVENT_2D_H
+#endif // TSUNAMI_LAB_SETUPS_ARTIFICIAL_TSUNAMI_2D_H

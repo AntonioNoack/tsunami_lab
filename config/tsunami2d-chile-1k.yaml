@@ -1,0 +1,9 @@
+setup: Tsunami2d
+bathymetryFile: ../chile_gebco20_usgs_250m_bath.nc
+displacementFile: ../chile_gebco20_usgs_250m_displ.nc
+maxDuration: 50000
+maxSteps: 100000
+scale: 0.25
+outputFile: chile-1k.nc
+outputStepSize: 3
+outputPeriod: 50
