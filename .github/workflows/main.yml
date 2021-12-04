@@ -48,7 +48,7 @@ jobs:
           cd build
           cmake ..
           make
-          make install
+          sudo make install
           cd ../..
 
       - name: Static Code Analysis
