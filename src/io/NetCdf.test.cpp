@@ -149,7 +149,18 @@ TEST_CASE( "Test checkpointing", "[NetCDF][Checkpointing]" ) {
   t_idx l_nx = 100, l_ny = 1, l_timeStepIndex = 21;
   t_real l_cellSizeMeters = 0.345, l_cflFactor = 0.25;
   double l_simulationTime = 0.123;
+  
+  // sample stations
   std::vector<tsunami_lab::io::Station> l_stations;
+  l_stations.push_back(tsunami_lab::io::Station(2, 5, "Bikini Bottom", 0.17));
+  l_stations[0].recordState(0,1,2,3);
+  l_stations[0].recordState(4,5,6,7);
+  l_stations[0].recordState(8,9,1,2);
+  
+  l_stations.push_back(tsunami_lab::io::Station(9, 13, "Atlantis", 0.17));
+  l_stations[1].recordState(2,1,1,2);
+  l_stations[1].recordState(7,8,8,7);
+  l_stations[1].recordState(1,2,2,1);
   
   t_idx l_nx2, l_ny2, l_timeStepIndex2;
   t_real l_cellSizeMeters2, l_cflFactor2;
@@ -195,6 +206,25 @@ TEST_CASE( "Test checkpointing", "[NetCDF][Checkpointing]" ) {
   REQUIRE(l_cflFactor2 == l_cflFactor);
   REQUIRE(l_simulationTime2 == l_simulationTime);
   REQUIRE(l_timeStepIndex2 == l_timeStepIndex);
+  
+  // test the stations (all properties at least once)
+  REQUIRE(l_stations2.size() == 2);
+  REQUIRE(l_stations2[0].getName() == "Bikini Bottom");
+  t_idx px,py;l_stations2[0].getPosition(px,py);
+  REQUIRE(px == 2);
+  REQUIRE(py == 5);
+  REQUIRE(l_stations2[0].getDelayBetweenRecords() == Approx(0.17));
+  REQUIRE(l_stations2[0].getRecords().size() == 3);
+  REQUIRE(l_stations2[0].getRecords()[2].time == 8);
+  REQUIRE(l_stations2[0].getRecords()[2].height == 9);
+  REQUIRE(l_stations2[0].getRecords()[2].momentumX == 1);
+  REQUIRE(l_stations2[0].getRecords()[2].momentumY == 2);
+  REQUIRE(l_stations2[1].getName() == "Atlantis");
+  REQUIRE(l_stations2[1].getRecords().size() == 3);
+  REQUIRE(l_stations2[1].getRecords()[2].time == 1);
+  REQUIRE(l_stations2[1].getRecords()[2].height == 2);
+  REQUIRE(l_stations2[1].getRecords()[2].momentumX == 2);
+  REQUIRE(l_stations2[1].getRecords()[2].momentumY == 1);
   
   // create the new scenario from the loaded data
   tsunami_lab::patches::WavePropagation1d l_waveProp2(l_nx);

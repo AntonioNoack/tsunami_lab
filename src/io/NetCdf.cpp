@@ -106,13 +106,13 @@ tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string
   check2(nc_get_var1_longlong(l_handle, l_simIdxVarId,  nullptr, (long long int*) &o_timeStepIndex2));
   o_timeStepIndex = o_timeStepIndex2;// just in case the size is different
   
-  // real all scalar properties
+  // read all scalar properties
   if(f){
-    check2(nc_get_var1_float( l_handle, l_cflFactorVarId,     nullptr, (float*)  &o_cflFactor));
-    check2(nc_get_var1_float( l_handle, l_cellSizeVarId,      nullptr, (float*)  &o_cellSizeMeters));
+    check2(nc_get_var1_float( l_handle, l_cflFactorVarId, nullptr, (float*)  &o_cflFactor));
+    check2(nc_get_var1_float( l_handle, l_cellSizeVarId,  nullptr, (float*)  &o_cellSizeMeters));
   } else {
-    check2(nc_get_var1_double(l_handle, l_cflFactorVarId,     nullptr, (double*) &o_cflFactor));
-    check2(nc_get_var1_double(l_handle, l_cellSizeVarId,      nullptr, (double*) &o_cellSizeMeters));
+    check2(nc_get_var1_double(l_handle, l_cflFactorVarId, nullptr, (double*) &o_cflFactor));
+    check2(nc_get_var1_double(l_handle, l_cellSizeVarId,  nullptr, (double*) &o_cellSizeMeters));
   }
   
   size_t l_size = sizeof(t_real) * o_nx * o_ny;
@@ -207,9 +207,10 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   check(nc_create((l_fileExisted ? l_tmpFileName : i_fileName).c_str(), NC_CLOBBER | NC_NETCDF4, &l_handle));
   
   int l_xDimId, l_yDimId, l_iDimId;
+  int l_stationDimSize = i_stations.size() > 0 ? i_stations[0].getRecords().size() * 4 + 3 : 1;
   check(nc_def_dim(l_handle, "x", i_nx, &l_xDimId));
   check(nc_def_dim(l_handle, "y", i_ny, &l_yDimId));
-  check(nc_def_dim(l_handle, "i", NC_UNLIMITED, &l_iDimId));// meaningless dimension; used for easy serialization of stations
+  check(nc_def_dim(l_handle, "i", l_stationDimSize, &l_iDimId));// meaningless dimension; used for easy serialization of stations
   // die Koordinatenachsen brauchen keine Werte (Variablen)
   
   auto l_type = sizeof(t_real) == 4 ? NC_FLOAT : NC_DOUBLE;
@@ -240,11 +241,12 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   
   // station variables; one per station (not the best, but maybe the easiest)
   std::vector<int> l_stationVarIds(i_stations.size());
+  int l_i = 0;
   for(auto &l_station : i_stations){
     int l_stationVarId;
     std::string l_joinedName = "station-" + l_station.getName();// station prefix, in case there is a station called like a variable
     check(nc_def_var(l_handle, l_joinedName.c_str(), l_type, 1, &l_iDimId, &l_stationVarId));
-    l_stationVarIds.push_back(l_stationVarId);
+    l_stationVarIds[l_i++] = l_stationVarId;
   }
   
   check(nc_enddef(l_handle));
@@ -275,20 +277,20 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   
   // 0d-Variablen
   long long int i_timeStepIndex2 = i_timeStepIndex;// in case sizeof(long long int) != 8
-  nc_put_var1_double(  l_handle, l_simTimeVarId, nullptr, (double*)        &i_simulationTime);
-  nc_put_var1_longlong(l_handle, l_simIdxVarId,  nullptr, (long long int*) &i_timeStepIndex2);
+  check(nc_put_var1_double(  l_handle, l_simTimeVarId, nullptr, (double*)        &i_simulationTime));
+  check(nc_put_var1_longlong(l_handle, l_simIdxVarId,  nullptr, (long long int*) &i_timeStepIndex2));
   
   if(f){
-    nc_put_var1_float( l_handle, l_cellSizeVarId,  nullptr, (float*)  &i_cellSizeMeters);
-    nc_put_var1_float( l_handle, l_cflFactorVarId, nullptr, (float*)  &i_cflFactor);
+    check(nc_put_var1_float( l_handle, l_cellSizeVarId,  nullptr, (float*)  &i_cellSizeMeters));
+    check(nc_put_var1_float( l_handle, l_cflFactorVarId, nullptr, (float*)  &i_cflFactor));
   } else {
-    nc_put_var1_double(l_handle, l_cellSizeVarId,  nullptr, (double*) &i_cellSizeMeters);
-    nc_put_var1_double(l_handle, l_cflFactorVarId, nullptr, (double*) &i_cflFactor);
+    check(nc_put_var1_double(l_handle, l_cellSizeVarId,  nullptr, (double*) &i_cellSizeMeters));
+    check(nc_put_var1_double(l_handle, l_cflFactorVarId, nullptr, (double*) &i_cflFactor));
   }
   
   // write stations as heterogenous arrays
   // (could be done with multiple variables per station, but I'm lazy for this one)
-  int l_i = 0;
+  l_i = 0;
   for(auto &l_station : i_stations){
     int l_var = l_stationVarIds[l_i++];
     size_t l_index = 0;
@@ -297,8 +299,8 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
     
     #define putValue(value)\
       l_value = (t_real) value;\
-      if(f){ nc_put_vara_float( l_handle, l_var, &l_index, &l_size, (float*)  &l_value); }\
-      else { nc_put_vara_double(l_handle, l_var, &l_index, &l_size, (double*) &l_value); }\
+      if(f){ check(nc_put_vara_float( l_handle, l_var, &l_index, &l_size, (float*)  &l_value)); }\
+      else { check(nc_put_vara_double(l_handle, l_var, &l_index, &l_size, (double*) &l_value)); }\
       l_index++;\
     
     putValue(l_station.getDelayBetweenRecords());
