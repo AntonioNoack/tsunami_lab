@@ -18,7 +18,7 @@ namespace tsunami_lab {
 }
 
 /**
- * 2d dam break setup.
+ * 2d tsunami setup.
  **/
 class tsunami_lab::setups::TsunamiEvent2d: public Setup {
   private:
@@ -38,7 +38,7 @@ class tsunami_lab::setups::TsunamiEvent2d: public Setup {
      * @param i_stride stride of the data, typically size.x.
 	 * @param i_sizeX data size in x dimension.
 	 * @parma i_sizeY data size in y direction.
-     * @param i_data float data with size of m_sizeX x m_sizeY and stride m_stride.
+     * @param i_data float data with size of i_sizeX x i_sizeY and stride i_stride.
      * @return linearly interpolated value at the queried point.
      **/
     t_real getInterpolatedValue( t_real i_x, t_real i_y, t_idx i_sizeX, t_idx i_sizeY, t_idx i_stride, t_real* i_data ) const;
@@ -48,11 +48,13 @@ class tsunami_lab::setups::TsunamiEvent2d: public Setup {
      * Constructor.
      *
      * @param i_bathymetry bathymetry data, a vector of length i_size, must not be null.
-     * @param i_size size of the bathymetry data array, must be > 0.
-     * @parma i_scale how much the scene is scaled up, typically <= 1.
-     * @param i_displacementStart index of the start of the displacement sine wave.
-     * @param i_displacementEnd index of the end of the displacement sine wave.
-     * @param i_displacement height of displacement.
+     * @param i_sizeXBath, i_sizeYBath size of the bathymetry data.
+	 * @param i_strideBath bathymetry data stride.
+	 * @param i_scaleBath bathymetry data scale.
+     * @param i_displacement displacement data, a vector of length i_size, must not be null.
+     * @param i_sizeXDisp, i_sizeYDisp size of the displacement data.
+	 * @param i_strideDisp displacement data stride.
+	 * @param i_scaleDisp displacement data scale.
      **/
     explicit TsunamiEvent2d( t_real* i_bathymetry,
                              t_idx   i_sizeXBath,

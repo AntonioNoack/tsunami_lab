@@ -61,7 +61,7 @@ if 'debug' in env['mode']:
   env.Append( CXXFLAGS = [ '-g',
                            '-O0' ] )
 else:
-  env.Append( CXXFLAGS = [ '-O2' ] )
+  env.Append( CXXFLAGS = [ '-O3' ] )
 
 # add sanitizers
 if 'san' in  env['mode']:
@@ -80,15 +80,12 @@ env.Append( CXXFLAGS = [ '-g' ] )
 # add Catch2
 env.Append( CXXFLAGS = [ '-Isubmodules/Catch2/single_include' ] )
 
-# add Yaml-Cpp
-env.Append( CXXFLAGS = [ '-Isubmodules/YamlCpp2/include' ] )
-
-# add netCDF
+# add netCDF & YamlCpp
 conf = Configure(env)
 externalLibs = []
 # packages: netcdf-bin, libnetcdf-dev
 # the task says, that zlib and hdf5 are required as packages, but SCons tells me it cannot find them, but builds fine anyways
-libs = ['netcdf'] # ,'zlib','hdf5'
+libs = ['netcdf', 'yaml-cpp'] # ,'zlib','hdf5'
 for lib in libs:
   if conf.CheckLib(lib):
     externalLibs.append(lib)
@@ -99,22 +96,21 @@ env.Append( CXXFLAGS = [ '-fopenmp' ] )
 env.Append( LINKFLAGS = [ '-fopenmp' ] )
 
 # get source files
-VariantDir( variant_dir = 'build/src',
-            src_dir     = 'src' )
+VariantDir( variant_dir = 'build/src', src_dir     = 'src' )
 
 env.sources = []
 env.tests = []
 env.tsunami1d = []
 
-src_file_path = inspect.getfile(lambda: None)
-yamlcpp_src = os.path.dirname(src_file_path) + "/submodules/YamlCpp2/src"
-for file in os.listdir(yamlcpp_src):
-  src_file = yamlcpp_src + "/" + file
-  if os.path.isfile(src_file):
-    if src_file.endswith(".cpp"):
-      env.sources.append(src_file)
-  else:
-    pass
+#src_file_path = inspect.getfile(lambda: None)
+#yamlcpp_src = os.path.dirname(src_file_path) + "/submodules/YamlCpp2/src"
+#for file in os.listdir(yamlcpp_src):
+#  src_file = yamlcpp_src + "/" + file
+#  if os.path.isfile(src_file):
+#    if src_file.endswith(".cpp"):
+#      env.sources.append(src_file)
+#  else:
+#    pass
 
 Export('env')
 SConscript( 'build/src/SConscript' )

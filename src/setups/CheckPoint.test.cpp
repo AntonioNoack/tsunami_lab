@@ -1,11 +1,11 @@
 /**
  * @author Antonio Noack
  * @section DESCRIPTION
- * Tests the two dimensional tsunami event setup.
+ * Tests the checkpoint setup.
  **/
 #include <catch2/catch.hpp>
 
-#include "TsunamiEvent2d.h"
+#include "CheckPoint.h"
 #include "ArtificialTsunami2d.h"
 #include "../constants.h"
 #include "../patches/WavePropagation2d.h"
@@ -14,7 +14,7 @@
 #define t_real tsunami_lab::t_real
 #define t_idx  tsunami_lab::t_idx
 
-TEST_CASE( "Tests for 2d tsunami event.", "[TsunamiEvent2d]" ) {
+/*TEST_CASE( "Tests for 2d tsunami event.", "[CheckPoint]" ) {
 
   t_idx l_nx = 1000, l_ny = 1000;
   
@@ -29,7 +29,7 @@ TEST_CASE( "Tests for 2d tsunami event.", "[TsunamiEvent2d]" ) {
   tsunami_lab::io::NetCDF::load2dArray("data/artificialtsunami_bathymetry_1000.nc", "z", l_nx2, l_ny2, l_cellSizeMeters2, l_tmp, l_tmp, l_bath);// 100 x 100 grid
   tsunami_lab::io::NetCDF::load2dArray("data/artificialtsunami_displ_1000.nc", "z", l_nx3, l_ny3, l_cellSizeMeters3, l_tmp, l_tmp, l_disp);// 1000 x 1000 grid
   
-  tsunami_lab::setups::TsunamiEvent2d l_testedSetup(l_bath.data(), l_nx2, l_ny2, l_nx2, 10, l_disp.data(), l_nx3, l_ny3, l_nx3, 1);
+  tsunami_lab::setups::CheckPoint l_testedSetup(l_bath.data(), l_nx2, l_ny2, l_nx2, 10, l_disp.data(), l_nx3, l_ny3, l_nx3, 1);
   
   tsunami_lab::patches::WavePropagation2d l_baselineProp(l_nx, l_ny, &l_baselineSetup, 1, 1);
   tsunami_lab::patches::WavePropagation2d l_testProp(l_nx, l_ny, &l_testedSetup, 1, 1);
@@ -51,4 +51,4 @@ TEST_CASE( "Tests for 2d tsunami event.", "[TsunamiEvent2d]" ) {
     }
   }
   
-}
+}*/

@@ -18,7 +18,7 @@ namespace tsunami_lab {
 }
 
 /**
- * 1d dam break setup.
+ * 1d tsunami setup.
  **/
 class tsunami_lab::setups::TsunamiEvent1d: public Setup {
   private:

@@ -6,8 +6,11 @@
  **/
 #include <catch2/catch.hpp>
 #include "../constants.h"
+#include "../patches/WavePropagation1d.h"
+
 #include <sstream>
 #include <iostream>
+#include <cstdio>
 #include <netcdf.h>
 
 #define private public
@@ -102,4 +105,121 @@ TEST_CASE( "Test the NetCDF-reading functionality for a 2d field named z.", "[Ne
   REQUIRE(l_cellSizeMeters == Approx(2.0));
   REQUIRE(l_data.size() == 12);
   for(int i=0;i<12;i++) REQUIRE(l_data[i] == i);
+}
+
+TEST_CASE( "Test sampling down an image for coarse output", "[NetCDF][downsample]" ) {
+  const t_idx l_sizeIn = 5, l_sizeOut = 2, l_step = 3;
+  const t_real l_dataIn[25] = {
+      5, 5, 5,  3, 4,
+      6, 4, 5,  2, 2,
+      4, 6, 5,  4, 3,
+      
+      3, 2, 1,  7, 8,
+      3, 1, 2,  8, 9
+  };
+  t_real l_dataOut[5] = { 0, 0, 0, 0, 19 };
+  tsunami_lab::io::NetCDF::downsample(l_sizeIn, l_sizeIn, l_sizeIn, l_dataIn, l_sizeOut, l_sizeOut, l_sizeOut, l_dataOut, l_step);
+  REQUIRE(l_dataOut[0] == 5);
+  REQUIRE(l_dataOut[1] == 3);
+  REQUIRE(l_dataOut[2] == 2);
+  REQUIRE(l_dataOut[3] == 8);
+  REQUIRE(l_dataOut[4] == 19);
+}
+
+TEST_CASE( "Test checkpointing", "[NetCDF][Checkpointing]" ) {
+  
+  /*
+   * Test case from WavePropagation1d:
+   *
+   *   Single dam break problem between cell 49 and 50.
+   *     left | right
+   *       10 | 8
+   *        0 | 0
+   *
+   *   Elsewhere steady state.
+   *
+   * The net-updates at the respective edge are given as
+   * (see derivation in Roe solver):
+   *    left          | right
+   *      9.394671362 | -9.394671362
+   *    -88.25985     | -88.25985
+   */
+
+  // define variables before & after serialization
+  t_idx l_nx = 100, l_ny = 1, l_timeStepIndex = 21;
+  t_real l_cellSizeMeters = 0.345, l_cflFactor = 0.25;
+  double l_simulationTime = 0.123;
+  std::vector<tsunami_lab::io::Station> l_stations;
+  
+  t_idx l_nx2, l_ny2, l_timeStepIndex2;
+  t_real l_cellSizeMeters2, l_cflFactor2;
+  double l_simulationTime2;
+  std::vector<tsunami_lab::io::Station> l_stations2;
+  
+  
+  // construct solver and setup a dam break problem
+  tsunami_lab::patches::WavePropagation1d l_waveProp(l_nx);
+  
+  for( std::size_t l_ce = 0; l_ce < 50; l_ce++ ) {
+    l_waveProp.setHeight( l_ce, 0, 10 );
+    l_waveProp.setMomentumX( l_ce, 0, 0 );
+  }
+  for( std::size_t l_ce = 50; l_ce < 100; l_ce++ ) {
+    l_waveProp.setHeight( l_ce, 0, 8 );
+    l_waveProp.setMomentumX( l_ce, 0, 0 );
+  }
+
+  // set outflow boundary condition
+  l_waveProp.setGhostOutflow();
+
+  // perform a time step
+  l_waveProp.timeStep( 0.1 );
+  
+  std::string l_fileName = "tmp-cp.nc";
+  std::remove(l_fileName.c_str()); // delete just in case it exists
+  
+  // save the checkpoint
+  auto l_error = tsunami_lab::io::NetCDF::storeCheckpoint( l_fileName, l_nx, l_ny, l_cellSizeMeters,
+                                                           l_cflFactor, l_simulationTime, l_timeStepIndex,
+                                                           l_stations, &l_waveProp );
+  REQUIRE(l_error == 0);
+  
+  // load the checkpoint
+  auto l_setup = tsunami_lab::io::NetCDF::loadCheckpoint( l_fileName, l_nx2, l_ny2, l_cellSizeMeters2,
+														  l_cflFactor2, l_simulationTime2, l_timeStepIndex2,
+                                                          l_stations2 );
+														  
+  REQUIRE(l_nx2 == l_nx);
+  REQUIRE(l_ny2 == l_ny);
+  REQUIRE(l_cellSizeMeters2 == l_cellSizeMeters);
+  REQUIRE(l_cflFactor2 == l_cflFactor);
+  REQUIRE(l_simulationTime2 == l_simulationTime);
+  REQUIRE(l_timeStepIndex2 == l_timeStepIndex);
+  
+  // create the new scenario from the loaded data
+  tsunami_lab::patches::WavePropagation1d l_waveProp2(l_nx);
+  l_waveProp2.initWithSetup(l_setup, 1.0);
+
+  // steady state
+  for( std::size_t l_ce = 0; l_ce < 49; l_ce++ ) {
+    REQUIRE( l_waveProp2.getHeight()   [l_ce] == Approx(10) );
+    REQUIRE( l_waveProp2.getMomentumX()[l_ce] == Approx(0) );
+  }
+
+  // dam-break
+  // margin added for support of different gravity constants (9.81 vs ~9.8066)
+  REQUIRE( l_waveProp2.getHeight()   [49] == Approx(10 - 0.1 * 9.394671362).margin(0.001) );
+  REQUIRE( l_waveProp2.getMomentumX()[49] == Approx( 0 + 0.1 * 88.25985).margin(0.01) );
+
+  REQUIRE( l_waveProp2.getHeight()   [50] == Approx(8 + 0.1 * 9.394671362).margin(0.001) );
+  REQUIRE( l_waveProp2.getMomentumX()[50] == Approx(0 + 0.1 * 88.25985).margin(0.01) );
+
+  // steady state
+  for( std::size_t l_ce = 51; l_ce < 100; l_ce++ ) {
+    REQUIRE( l_waveProp2.getHeight()   [l_ce] == Approx(8) );
+    REQUIRE( l_waveProp2.getMomentumX()[l_ce] == Approx(0) );
+  }
+  
+  delete l_setup;
+  
 }

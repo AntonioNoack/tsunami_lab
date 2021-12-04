@@ -44,7 +44,7 @@ tsunami_lab::patches::WavePropagation1d::WavePropagation1d( t_idx i_nCells ) {
     }
   }
   for( t_idx l_ce = 0; l_ce < l_cellCount; l_ce++ ) {
-    m_bathymetry[l_ce] = -20;
+    m_bathymetry[l_ce] = 0;
   }
 }
 
@@ -182,17 +182,15 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation1d::computeMaxTimestep(
   t_real l_maxVelocity = 0;
   t_real l_gravity = tsunami_lab::solvers::FWave::m_gravity;
   
+  #pragma omp parallel for reduction(max: l_maxVelocity)
   for(t_idx l_x=l_startIndex;l_x<l_endIndex;l_x++){
-    t_real l_height = l_h[l_x], l_height0 = l_height;
-    if(l_height > 0){
-      // worst case consideration for height; alternatively, we could look at the worst case velocity
-      l_height = std::max(l_height, l_h[l_x-1]);
-      l_height = std::max(l_height, l_h[l_x+1]);
-      t_real l_impulse = l_hu[l_x];
-      t_real l_velocity = std::abs(l_impulse) / l_height0;
-      t_real l_expectedVelocity = l_velocity + std::sqrt(l_gravity * l_height);
-      l_maxVelocity = std::max(l_maxVelocity, l_expectedVelocity);
-    }
+    t_real l_height = l_h[l_x];
+    // worst case consideration for height; alternatively, we could look at the worst case velocity
+    t_real l_impulse = l_hu[l_x];
+    t_real l_velocity = std::abs(l_impulse) / l_height;
+    t_real l_expectedVelocity = l_velocity + std::sqrt(l_gravity * l_height);
+    // if expected velocity is NaN by division by zero, then this will be false
+    if(l_expectedVelocity > l_maxVelocity) l_maxVelocity = l_expectedVelocity;
   }
   
   return 0.5 * i_cellSizeMeters / l_maxVelocity;

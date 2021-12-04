@@ -33,15 +33,19 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
 
   // init to zero
   for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
+    #pragma omp parallel for
     for( t_idx l_ce = 0; l_ce < l_cellCount; l_ce++ ) {
       m_h [l_st][l_ce] = 0;
       m_hu[l_st][l_ce] = 0;
       m_hv[l_st][l_ce] = 0;
     }
   }
+  
+  #pragma omp parallel for
   for( t_idx l_ce = 0; l_ce < l_cellCount; l_ce++ ) {
-    m_bathymetry[l_ce] = -20;
+    m_bathymetry[l_ce] = 0;
   }
+  
 }
 
 tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_idx i_nCellsY, tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY ) {
@@ -193,20 +197,23 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   memcpy(l_huNew, l_huOld, sizeof(t_real) * m_nCells);
   memcpy(l_hvNew, l_hvOld, sizeof(t_real) * m_nCells);
   
-    //////////////////////////////
-   // half step in x direction //
+  //////////////////////////////
+  // half step in x direction //
   //////////////////////////////
   
   t_idx l_stride = getStride();
+  
+  t_idx l_nCellsX = m_nCellsX;
+  t_idx l_nCellsY = m_nCellsY;
 
   // iterate over edges and update with Riemann solutions
   #pragma omp parallel for
-  for( t_idx l_iy = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
-    for( t_idx l_ix = 0; l_ix < m_nCellsX + 2 - 1; l_ix++ ) {
-      // determine cell-ids left and right
-      t_idx l_ceL = l_ix + l_iy * l_stride;
-      t_idx l_ceR = l_ceL + 1;
-      internalUpdate( i_scaling, l_ceL, l_ceR, l_hOld, l_huOld, l_hNew, l_huNew );
+  for( t_idx l_iy = 0; l_iy < l_nCellsY + 2; l_iy++ ) {
+    t_idx l_ceStart = l_iy * l_stride;
+    t_idx l_ceEnd = l_ceStart + l_nCellsX + 2 - 1;
+	#pragma omp simd
+    for(t_idx l_ceL = l_ceStart; l_ceL < l_ceEnd; l_ceL++) {
+      internalUpdate(i_scaling, l_ceL, l_ceL + 1, l_hOld, l_huOld, l_hNew, l_huNew);
     }
   }
   
@@ -217,18 +224,19 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   // init new cell quantities
   memcpy(l_hNew, l_hOld, sizeof(t_real) * m_nCells);
   
-    //////////////////////////////
-   // half step in y direction //
+  //////////////////////////////
+  // half step in y direction //
   //////////////////////////////
   
   // iterate over edges and update with Riemann solutions
+  t_idx l_iyEnd = l_nCellsY + 2 - 1;
   #pragma omp parallel for
-  for( t_idx l_iy = 0; l_iy < m_nCellsY + 2 - 1; l_iy++ ) {
-    for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++ ) {
-      // determine cell-ids above and below
-      t_idx l_ceL = l_ix + l_iy * l_stride;
-      t_idx l_ceR = l_ceL + l_stride;
-      internalUpdate( i_scaling, l_ceL, l_ceR, l_hOld, l_hvOld, l_hNew, l_hvNew );
+  for(t_idx l_iy = 0; l_iy < l_iyEnd; l_iy++) {
+    t_idx l_ceStart = l_iy * l_stride;
+    t_idx l_ceEnd = l_ceStart + l_nCellsX + 2;
+    #pragma omp simd
+    for(t_idx l_ceL = l_ceStart; l_ceL < l_ceEnd; l_ceL++) {
+      internalUpdate(i_scaling, l_ceL, l_ceL + l_stride, l_hOld, l_hvOld, l_hNew, l_hvNew);
     }
   }
   
@@ -245,22 +253,20 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation2d::computeMaxTimestep(
   
   t_idx  l_stride = getStride();
   
+  t_idx  l_nCellsX = m_nCellsX;
+  t_idx  l_nCellsY = m_nCellsY;
+  
   #pragma omp parallel for reduction(max: l_maxVelocity)
-  for( t_idx l_iy = 1; l_iy <= m_nCellsY; l_iy++){
-    t_idx l_i = l_iy * l_stride + 1;// +1, because we start iterating at l_ix = 1
-    for( t_idx l_ix = 1; l_ix <= m_nCellsX; l_ix++, l_i++){
-      t_real l_height = l_h[l_i], l_height0 = l_height;
-      if(l_height > 0){
-        // worst case consideration for height; alternatively, we could look at the worst case velocity
-        l_height = std::max(l_height, l_h[l_i-1]);// left
-        l_height = std::max(l_height, l_h[l_i+1]);// right
-        l_height = std::max(l_height, l_h[l_i-l_stride]);// top
-        l_height = std::max(l_height, l_h[l_i+l_stride]);// bottom
-        t_real l_impulse = std::max(std::abs(l_hu[l_i]), std::abs(l_hv[l_i]));
-        t_real l_velocity = l_impulse / l_height0;
-        t_real l_expectedVelocity = l_velocity + std::sqrt(l_gravity * l_height);
-        l_maxVelocity = std::max(l_maxVelocity, l_expectedVelocity);
-      }
+  for( t_idx l_iy = 1; l_iy <= l_nCellsY; l_iy++){
+    t_idx l_iStart = l_iy * l_stride + 1;// +1, because we start iterating at l_ix = 1
+	t_idx l_iEnd = l_iStart + l_nCellsX + 1;
+    #pragma omp simd
+    for(t_idx l_i = l_iStart; l_i < l_iEnd; l_i++){
+      t_real l_height = l_h[l_i];
+      t_real l_impulse = std::max(std::abs(l_hu[l_i]), std::abs(l_hv[l_i]));
+      t_real l_velocity = l_impulse / l_height;
+      t_real l_expectedVelocity = l_velocity + std::sqrt(l_gravity * l_height);
+      if(l_expectedVelocity > l_maxVelocity) l_maxVelocity = l_expectedVelocity;
     }
   }
   
@@ -282,6 +288,7 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   t_idx l_stride = getStride();
   
   // set left boundary
+  #pragma omp parallel for
   for(t_idx l_y = 0; l_y < m_nCellsY+2; l_y++){
     t_idx l_i0 = l_y * l_stride;
     t_idx l_i1 = l_i0 + 1;
@@ -292,6 +299,7 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   }
   
   // set right boundary
+  #pragma omp parallel for
   for(t_idx l_y = 0; l_y < m_nCellsY+2; l_y++){
     t_idx l_i0 = m_nCellsX + 1 + l_y * l_stride;
     t_idx l_i1 = l_i0 - 1;
@@ -302,6 +310,7 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   }
   
   // set top boundary
+  #pragma omp parallel for
   for(t_idx l_x = 0; l_x < m_nCellsX+2; l_x++){
     t_idx l_i0 = l_x;
     t_idx l_i1 = l_i0 + l_stride;
@@ -312,6 +321,7 @@ void tsunami_lab::patches::WavePropagation2d::setGhostOutflow() {
   }
   
   // set bottom boundary
+  #pragma omp parallel for
   for(t_idx l_x = 0; l_x < m_nCellsX+2; l_x++){
     t_idx l_i0 = l_x + (m_nCellsY + 1) * l_stride;
     t_idx l_i1 = l_i0 - l_stride;

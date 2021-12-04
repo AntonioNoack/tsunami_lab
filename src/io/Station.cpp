@@ -20,7 +20,11 @@ void tsunami_lab::io::Station::recordState( tsunami_lab::patches::WavePropagatio
   auto l_hvPtr = i_waveProp.getMomentumY();
   t_real l_hu = l_huPtr ? l_huPtr[l_index] : 0;
   t_real l_hv = l_hvPtr ? l_hvPtr[l_index] : 0;
-  m_records.push_back( { i_time, l_h, l_hu, l_hv } );
+  recordState( i_time, l_h, l_hu, l_hv );
+}
+
+void tsunami_lab::io::Station::recordState( t_real i_time, t_real i_h, t_real i_hu, t_real i_hv ) {
+  m_records.push_back( { i_time, i_h, i_hu, i_hv } );
   m_nextRecordTime = i_time + m_delayBetweenRecords;
 }
 

@@ -19,6 +19,8 @@ Building the project
 
 Install the packages "netcdf-bin" and "libnetcdf-dev" for NetCDF.
 
+Install YAML-Cpp.
+
 The project is using SCons, so you can build the code using the command "scons".
 
 

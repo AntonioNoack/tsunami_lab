@@ -16,7 +16,7 @@ namespace tsunami_lab {
 }
 
 /**
- * 1d dam break setup.
+ * subcritical setup.
  **/
 class tsunami_lab::setups::SubcriticalFlow1d: public Setup {
   public:

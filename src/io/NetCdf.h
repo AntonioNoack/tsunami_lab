@@ -2,7 +2,7 @@
  * @author Antonio Noack
  * 
  * @section DESCRIPTION
- * IO-routines for writing a snapshot as a NetCDF file.
+ * IO-routines for writing a snapshot/checkpoint as a NetCDF file.
  **/
 #ifndef TSUNAMI_LAB_IO_NETCDF_H
 #define TSUNAMI_LAB_IO_NETCDF_H
@@ -11,7 +11,10 @@
 #include <vector>
 
 #include "../constants.h"
+#include "../io/Station.h"
+#include "../patches/WavePropagation.h"
 #include "../setups/Setup.h"
+#include "../setups/CheckPoint.h"
 
 namespace tsunami_lab {
   namespace io {
@@ -20,9 +23,19 @@ namespace tsunami_lab {
 }
 
 class tsunami_lab::io::NetCDF {
+  private:
+    static void downsample( t_idx         i_sizeInX,
+                            t_idx         i_sizeInY,
+                            t_idx         i_strideIn,
+                            t_real const* i_dataIn,
+                            t_idx         i_sizeOutX,
+                            t_idx         i_sizeOutY,
+                            t_idx         i_strideOut,
+                            t_real*       i_dataOut,
+                            t_idx         i_step );
   public:
     /**
-     * Writes the data as a NetCDF file to the given stream.
+     * Writes the data as a NetCDF file.
      *
      * @param i_cellSizeMeters cell size in x- and y-direction.
      * @param i_nx number of cells in x-direction.
@@ -58,6 +71,53 @@ class tsunami_lab::io::NetCDF {
                                 t_idx                        i_frameIndex,
                                 int                          i_deflateLevel,
                                 std::string                  i_fileName );
+    
+    /**
+     * Reads a checkpint from a file.
+     *
+     * @param i_fileName input file name.
+     * @param o_nx field size on x axis.
+     * @param o_ny field size on y axis.
+     * @param o_cellSizeMeters cell size in meters.
+     * @param o_cflFactor cfl factor for 2d simulations, 0.5 else.
+     * @param o_simulationTime last computed simulation time in seconds.
+     * @param o_timeStepIndex last time step index.
+     * @param o_stations stations with previously collected values.
+     * @return a setup with height, bathymetry and impulse data.
+     **/
+    static tsunami_lab::setups::Setup* loadCheckpoint( std::string                             i_fileName,
+                                                       t_idx                                 & o_nx,
+                                                       t_idx                                 & o_ny,
+                                                       t_real                                & o_cellSizeMeters,
+                                                       t_real                                & o_cflFactor,
+                                                       double                                & o_simulationTime,
+                                                       t_idx                                 & o_timeStepIndex,
+                                                       std::vector<tsunami_lab::io::Station> & o_stations );
+    
+    /**
+     * Writes the current simulation data as a NetCDF file / checkpoint.
+     *
+     * @param i_fileName output file name.
+     * @param i_nx field size x axis.
+     * @param i_ny field size y axis.
+     * @param i_cellSizeMeters cell size in meters.
+     * @param i_cflFactor cfl factor for 2d simulations.
+     * @param i_simulationTime current simulation time in seconds.
+     * @param i_timeStepIndex n for the n-th time step.
+     * @param i_stations stations.
+     * @param i_waveProp wave propagation instance.
+     * @return 0 if successful, error code else
+     **/
+    static int storeCheckpoint( std::string                             i_fileName,
+                                t_idx                                   i_nx,
+                                t_idx                                   i_ny,
+                                t_real                                  i_cellSizeMeters,
+                                t_real                                  i_cflFactor,
+                                double                                  i_simulationTime,
+                                t_idx                                   i_timeStepIndex,
+                                std::vector<tsunami_lab::io::Station> & i_stations,
+                                tsunami_lab::patches::WavePropagation * i_waveProp );
+    
     /**
      * Reads a 2d array of data from a NetCDF file.
      *

@@ -1,7 +1,7 @@
 /**
  * @author Antonio Noack
  * @section DESCRIPTION
- * One-dimensional tsunami event.
+ * Two-dimensional tsunami event.
  **/ 
 #include "TsunamiEvent2d.h"
 
