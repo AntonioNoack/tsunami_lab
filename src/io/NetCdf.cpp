@@ -24,6 +24,7 @@
   l_err = error;\
   if(l_err != NC_NOERR){\
     std::cerr << "NetCDF-Error occurred: " << nc_strerror(l_err) << " (Code " << l_err << "), line " << __LINE__ << std::endl;\
+    nc_close(l_handle);\
     return -1;\
   }\
 }
@@ -32,6 +33,7 @@
   l_err = error;\
   if(l_err != NC_NOERR){\
     std::cerr << "NetCDF-Error occurred: " << nc_strerror(l_err) << " (Code " << l_err << "), line " << __LINE__ << std::endl;\
+    nc_close(l_handle);\
     return nullptr;\
   }\
 }
@@ -49,22 +51,32 @@ void tsunami_lab::io::NetCDF::downsample( t_idx         i_sizeXIn,
                                           t_idx         i_strideOut,
                                           t_real*       i_dataOut,
                                           t_idx         i_step ){
-  #pragma omp parallel for
-  for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
-    t_idx l_indexOut = l_yOut * i_strideOut;
-    const t_idx l_yIn0 = l_yOut * i_step;
-    const t_idx l_yIn1 = std::min(l_yIn0 + i_step, i_sizeYIn);
-    for(t_idx l_xOut=0;l_xOut<i_sizeXOut;l_xOut++){
-      const t_idx l_xIn0 = l_xOut * i_step;
-      const t_idx l_xIn1 = std::min(l_xIn0 + i_step, i_sizeXIn);
-      t_real l_sum = 0;
-      for(t_idx l_yIn=l_yIn0;l_yIn<l_yIn1;l_yIn++){
-        t_idx l_indexIn = l_xIn0 + l_yIn * i_strideIn;
-        for(t_idx l_xIn=l_xIn0;l_xIn<l_xIn1;l_xIn++){
-          l_sum += i_dataIn[l_indexIn++];
+  if(i_step > 1){
+    #pragma omp parallel for
+    for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
+      t_idx l_indexOut = l_yOut * i_strideOut;
+      const t_idx l_yIn0 = l_yOut * i_step;
+      const t_idx l_yIn1 = std::min(l_yIn0 + i_step, i_sizeYIn);
+      for(t_idx l_xOut=0;l_xOut<i_sizeXOut;l_xOut++){
+        const t_idx l_xIn0 = l_xOut * i_step;
+        const t_idx l_xIn1 = std::min(l_xIn0 + i_step, i_sizeXIn);
+        t_real l_sum = 0;
+        for(t_idx l_yIn=l_yIn0;l_yIn<l_yIn1;l_yIn++){
+          t_idx l_indexIn = l_xIn0 + l_yIn * i_strideIn;
+          for(t_idx l_xIn=l_xIn0;l_xIn<l_xIn1;l_xIn++){
+            l_sum += i_dataIn[l_indexIn++];
+          }
         }
+        i_dataOut[l_indexOut++] = l_sum / (t_real)((l_xIn1-l_xIn0)*(l_yIn1-l_yIn0));
       }
-      i_dataOut[l_indexOut++] = l_sum / (t_real)((l_xIn1-l_xIn0)*(l_yIn1-l_yIn0));
+    }
+  } else {// just copy the stripes
+    t_idx l_copySize = i_sizeXOut * sizeof(t_real);
+    #pragma omp parallel for
+    for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
+      t_idx l_indexIn  = l_yOut * i_strideIn;
+      t_idx l_indexOut = l_yOut * i_strideOut;
+      memcpy(i_dataOut + l_indexOut, i_dataIn + l_indexIn, l_copySize);
     }
   }
 }
@@ -154,15 +166,15 @@ tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string
     char l_name[NC_MAX_NAME+1];
     check2(nc_inq_var(l_handle, l_var, l_name, nullptr, nullptr, nullptr, nullptr));
     if(strncmp(l_name, "station-", strlen("station-")) == 0){// starts with "station-", so it's a station
-	  
-	  std::string l_stationName(l_name + strlen("station-"));// variable name without prefix
-	  
-	  // read in all station data
-	  size_t l_startVec0[1] = { 0 };
-	  size_t l_countVec0[1] = { l_dimILength };
-	  if(f){ check2(nc_get_vara_float( l_handle, l_var, l_startVec0, l_countVec0, (float*)  l_stationData.data())); }
-	  else { check2(nc_get_vara_double(l_handle, l_var, l_startVec0, l_countVec0, (double*) l_stationData.data())); }
-	  
+      
+      std::string l_stationName(l_name + strlen("station-"));// variable name without prefix
+      
+      // read in all station data
+      size_t l_startVec0[1] = { 0 };
+      size_t l_countVec0[1] = { l_dimILength };
+      if(f){ check2(nc_get_vara_float( l_handle, l_var, l_startVec0, l_countVec0, (float*)  l_stationData.data())); }
+      else { check2(nc_get_vara_double(l_handle, l_var, l_startVec0, l_countVec0, (double*) l_stationData.data())); }
+      
       t_real l_delayBetweenRecords = l_stationData[0];
       t_idx  l_x = (t_idx) l_stationData[1];
       t_idx  l_y = (t_idx) l_stationData[2];
@@ -175,7 +187,7 @@ tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string
         l_station.recordState(l_t, l_h, l_hu, l_hv);
       }
       o_stations.push_back(l_station);
-	  
+      
     }
   }
   
@@ -186,6 +198,8 @@ tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string
     delete[] l_hv;
     check2(l_err);
   }
+  
+  check2(nc_close(l_handle));
   
   return new tsunami_lab::setups::CheckPoint(l_h, l_b, l_hu, l_hv, o_nx, o_ny, o_nx);
   
@@ -204,6 +218,7 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   bool l_fileExisted = stat(i_fileName.c_str(), &buffer) == 0;
   std::string l_tmpFileName = i_fileName + ".tmp";
   
+  if(l_fileExisted) std::cout << "  writing to " << l_tmpFileName << std::endl;
   check(nc_create((l_fileExisted ? l_tmpFileName : i_fileName).c_str(), NC_CLOBBER | NC_NETCDF4, &l_handle));
   
   int l_xDimId, l_yDimId, l_iDimId;
@@ -324,11 +339,10 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   
   // if file existed, rm original, mv file
   if(l_fileExisted){
+    l_err = std::remove(i_fileName.c_str());
+    if(l_err) std::cerr << "Remove of " << i_fileName << " failed!" << std::endl;
     l_err = std::rename(l_tmpFileName.c_str(), i_fileName.c_str());
-    if(l_err) {
-      std::cerr << "Rename from " << l_tmpFileName << " to " << i_fileName << " failed!" << std::endl;
-      return l_err;
-    }
+    if(l_err) std::cerr << "Rename from " << l_tmpFileName << " to " << i_fileName << " failed!" << std::endl;
   }
   
   return 0;
@@ -348,7 +362,6 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
                                               t_real               const * i_b,
                                               tsunami_lab::setups::Setup * i_setup,
                                               t_real                       i_time,
-                                              t_idx                        i_frameIndex,
                                               int                          i_deflateLevel,
                                               std::string                  i_fileName ) {
 
@@ -360,25 +373,26 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
   // is said to be useless for deflate level = 9. In my test, testing config/tsunami2d-tohoku.yaml, this was incorrect
   bool l_shuffle = l_deflate;
   
-  bool l_isFirstFrame = i_frameIndex <= 0;
+  bool l_isFirstFrame = i_time <= 0;
   
   int l_handle;// file handle
-  
-  if(l_isFirstFrame){
-    check(nc_create(i_fileName.c_str(), NC_CLOBBER | NC_NETCDF4, &l_handle));
-  } else {
-    check(nc_open(i_fileName.c_str(), NC_WRITE, &l_handle));
-  }
   
   // coarse output field size x/y if i_step > 1
   t_idx l_nx = CEIL_DIV(i_nx, i_step), l_ny = CEIL_DIV(i_ny, i_step);
   
   // dimension ids
   int l_xDimId, l_yDimId, l_tDimId;
-  
   int l_heightId, l_momentumXId, l_momentumYId, l_bathymetryId, l_displacementId;
   int l_xVarId, l_yVarId; // values on x and y axes (e.g. 0 .. 50 x 0 .. 50)
   int l_tVarId;// time values in seconds
+  
+  size_t i_timeStepIndex = 0;
+  
+  if(l_isFirstFrame){
+    check(nc_create(i_fileName.c_str(), NC_CLOBBER | NC_NETCDF4, &l_handle));
+  } else {
+    check(nc_open(i_fileName.c_str(), NC_WRITE, &l_handle));
+  }
   
   std::vector<float> l_dataWithoutStride(l_nx * l_ny);
   
@@ -451,19 +465,34 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
     
     check(nc_inq_dimid(l_handle, "x",    &l_xDimId));
     check(nc_inq_dimid(l_handle, "y",    &l_yDimId));
+    check(nc_inq_dimid(l_handle, "time", &l_tDimId));
     check(nc_inq_varid(l_handle, "time", &l_tVarId));
-      
+    
+    // query maximum time, and just return, if the maximum value is already bigger
+    // also query the time index of this current frame
+    check(nc_inq_dimlen(l_handle, l_tDimId, &i_timeStepIndex));
+    
+    float l_lastFloatTime;
+    size_t l_index[1] = { i_timeStepIndex-1 };
+    check(nc_get_var1_float(l_handle, l_tVarId, l_index, &l_lastFloatTime));
+    
+    if((float) i_time <= l_lastFloatTime){
+      std::cout << "time was already found in file: " << i_time << " <= " << l_lastFloatTime << "; skipping writing frame" << std::endl;
+      check(nc_close(l_handle));
+      return EXIT_SUCCESS;
+    }
+    
     if(i_h ) check(nc_inq_varid(l_handle, "height",     &l_heightId));
     if(i_hu) check(nc_inq_varid(l_handle, "momentumX",  &l_momentumXId));
     if(i_hv) check(nc_inq_varid(l_handle, "momentumY",  &l_momentumYId));
     
   }
   
-  size_t l_zero = i_frameIndex;// index for that dimension (mmh)
+  size_t l_zero = i_timeStepIndex;// index for that dimension (mmh)
   float l_floatTime = (float) i_time;// time may be a double
   check(nc_put_var1_float(l_handle, l_tVarId, &l_zero, &l_floatTime));
   
-  size_t l_startVec[3] = { i_frameIndex, 0, 0 };
+  size_t l_startVec[3] = { i_timeStepIndex, 0, 0 };
   size_t l_countVec[3] = { 1, l_ny, l_nx };// required when working with infinite dimensions
   
   if(i_h){

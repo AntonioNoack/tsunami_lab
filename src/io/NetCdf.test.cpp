@@ -64,7 +64,7 @@ TEST_CASE( "Test the NetCDF-writer to append data.", "[NetCDF][AppendData]" ) {
   std::string l_fileName = "tmp.nc";
   
   for(t_idx i=0;i<l_nt;i++){
-    tsunami_lab::io::NetCDF::appendTimeframe(l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_step, l_stride, l_h, l_hu, l_hv, l_b, nullptr, (t_real) (i * 0.5), i, l_deflateLevel, l_fileName);
+    tsunami_lab::io::NetCDF::appendTimeframe(l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_step, l_stride, l_h, l_hu, l_hv, l_b, nullptr, (t_real) (i * 0.5), l_deflateLevel, l_fileName);
   }
   
   int l_err;

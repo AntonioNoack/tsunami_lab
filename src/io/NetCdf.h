@@ -68,7 +68,6 @@ class tsunami_lab::io::NetCDF {
                                 t_real               const * i_b,
                                 tsunami_lab::setups::Setup * i_setup,
                                 t_real                       i_time,
-                                t_idx                        i_frameIndex,
                                 int                          i_deflateLevel,
                                 std::string                  i_fileName );
     

@@ -90,6 +90,11 @@ int main( int i_argc, char *i_argv[] ) {
   }
   
   char* l_configPath = i_argv[1];
+  if(!fileExists(l_configPath)){
+    std::cerr << "Configuration file could not be found!" << std::endl;
+    return EXIT_FAILURE;
+  }
+  
   auto l_config = YAML::LoadFile(l_configPath);
   
   std::vector<tsunami_lab::io::Station> l_stations;
@@ -118,30 +123,41 @@ int main( int i_argc, char *i_argv[] ) {
   // check whether a checkpoint exists //
   ///////////////////////////////////////
   size_t l_configHash = std::hash<std::string>{}(readFileAsString(l_configPath));
-  std::string l_checkpointPathDefault = "checkpoint-" + std::string(l_configPath) + "." + std::to_string(l_configHash) + ".nc";
+  std::string l_configPathStr(l_configPath);
+  std::string l_configPathName = l_configPathStr.substr(l_configPathStr.find_last_of("/\\") + 1);
+  std::string l_checkpointPathDefault = "checkpoint-" + l_configPathName + "." + std::to_string(l_configHash) + ".nc";
   std::string l_checkpointPath = readOrDefault<std::string>(l_config, "checkpointFile", l_checkpointPathDefault);
-  t_idx l_checkpointingInterval = readOrDefault<t_real>(l_config, "checkpointInterval", 10 * 60);// default: create a checkpoint every 10 mins
+  t_idx l_checkpointingPeriod = readOrDefault<t_real>(l_config, "checkpointPeriod", 10 * 60);// default: create a checkpoint every 10 mins
   
-  std::cout << "checkpoint file: " << l_checkpointPath << ", interval: " << l_checkpointingInterval << "s" << std::endl;
+  std::cout << "checkpoint file: " << l_checkpointPath << ", interval: " << l_checkpointingPeriod << "s" << std::endl;
   
   bool l_printStationComments = readOrDefault(l_config, "printStationComments", true);
   
   if(readOrDefault(l_config, "readCheckpoints", true) && fileExists(l_checkpointPath)){
     // todo how can we save stations in checkpoints? extra variables "station-'name'"
-	// h, hu, hv, b
+    // h, hu, hv, b
     l_scale = 1;
-	// todo create setup
-	l_setup = tsunami_lab::io::NetCDF::loadCheckpoint(l_checkpointPath, l_nx, l_ny, l_cellSizeMeters, l_cflFactor, l_simulationTime, l_timeStepIndex, l_stations);
+    // todo create setup
+    l_setup = tsunami_lab::io::NetCDF::loadCheckpoint(l_checkpointPath, l_nx, l_ny, l_cellSizeMeters, l_cflFactor, l_simulationTime, l_timeStepIndex, l_stations);
     // only required for the first frame
     l_gridOffsetX = 0;
     l_gridOffsetY = 0;
-	if(l_setup == nullptr){
-	  std::cerr << "warn: checkpoint could not be loaded!, starting from zero!" << std::endl;
-	}
+    if(l_setup == nullptr){
+      std::cerr << "warn: checkpoint could not be loaded!, starting from zero!" << std::endl;
+    } else {
+      std::cout << "loaded checkpoint: " << l_simulationTime << "s, frameIndex: " << l_timeStepIndex << std::endl;
+    }
   }
+  
+  // must stay in scope; I don't have a better solution currently; maybe the value could be moved into setup
+  // a copy shouldn't be expensive compared to our simulation and writing the results to disk
+  std::vector<t_real> l_bathymetry;
+  std::vector<t_real> l_displacement;
   
   // setup is null if no checkpoint was found or it could not be loaded
   if(l_setup == nullptr){
+    
+    std::cout << "loading setup from config file" << std::endl;
     
     // many setups share similar setup information, so just request them all at once;
     // it should not matter for performance, as this all will be done within 1ms.
@@ -189,11 +205,6 @@ int main( int i_argc, char *i_argv[] ) {
     // if not defined, this is the center of that corner
     l_gridOffsetX = l_cellSizeMeters * 0.5;
     l_gridOffsetY = l_cellSizeMeters * 0.5;
-  
-    // must stay in scope; I don't have a better solution currently; maybe the value could be moved into setup
-    // a copy shouldn't be expensive compared to our simulation and writing the results to disk
-    std::vector<t_real> l_bathymetry;
-    std::vector<t_real> l_displacement;
   
     if(
       l_setupName == "DamBreak" ||
@@ -412,6 +423,7 @@ int main( int i_argc, char *i_argv[] ) {
     std::cout << "  split position x:               " << l_splitPositionX << std::endl;
     std::cout << "  split position y:               " << l_splitPositionY << std::endl;
     std::cout << "  applied scale:                  " << l_scale << std::endl;
+    std::cout << "  cfl factor:                     " << l_cflFactor << std::endl;
     std::cout << "  OpenMP threads:                 " << omp_get_max_threads() << std::endl;
   }
   
@@ -441,7 +453,7 @@ int main( int i_argc, char *i_argv[] ) {
   
   // iterate over time
   t_idx l_lastOutputIndex = -1;
-  t_idx l_timeStepIndexPerf = 0;
+  t_idx l_timeStepIndexPerf = l_timeStepIndex;
   for(; l_timeStepIndex < l_maxTimesteps && l_simulationTime < l_maxDuration; l_timeStepIndex++ ){
     
     auto l_stepTime = std::chrono::high_resolution_clock::now();
@@ -452,15 +464,15 @@ int main( int i_argc, char *i_argv[] ) {
       l_performanceTimeDebug0 = l_stepTime;
       l_timeStepIndexPerf = l_timeStepIndex;
     }
-	
-	double l_durI2 = std::chrono::duration<double>(l_stepTime-l_checkpointingTime0).count();
-	if(l_durI2 >= l_checkpointingInterval){
-	  // create a new checkpoint
-	  std::cout << "  saving checkpoint" << std::endl;
-	  tsunami_lab::io::NetCDF::storeCheckpoint(l_checkpointPath, l_nx, l_ny, l_cellSizeMeters, l_cflFactor, l_simulationTime, l_timeStepIndex, l_stations, l_waveProp);
-	  std::cout << "  finished saving checkpoint" << std::endl;
-	  l_checkpointingTime0 = l_stepTime;// reset the timer for the next checkpoint
-	}
+    
+    double l_durI2 = std::chrono::duration<double>(l_stepTime-l_checkpointingTime0).count();
+    if(l_durI2 >= l_checkpointingPeriod){
+      // create a new checkpoint
+      std::cout << "  saving checkpoint" << std::endl;
+      tsunami_lab::io::NetCDF::storeCheckpoint(l_checkpointPath, l_nx, l_ny, l_cellSizeMeters, l_cflFactor, l_simulationTime, l_timeStepIndex, l_stations, l_waveProp);
+      std::cout << "  finished saving checkpoint" << std::endl;
+      l_checkpointingTime0 = std::chrono::high_resolution_clock::now();// reset the timer for the next checkpoint
+    }
     
     // index, which frame we'd need to print theoretically
     // if there are more frames requested than simulated, we just skip some
@@ -478,12 +490,12 @@ int main( int i_argc, char *i_argv[] ) {
         std::ofstream l_file(l_path, std::ios::out);
         tsunami_lab::io::Csv::write(l_cellSizeMeters, l_nx, l_ny, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_file);
         l_file.close();
+      
+        l_nOut++;
         
       } else {
-        if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_simulationTime, l_nOut, l_deflateLevel, l_netCdfPath)) return EXIT_FAILURE;
+        if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_simulationTime, l_deflateLevel, l_netCdfPath)) return EXIT_FAILURE;
       }
-      
-      l_nOut++;
       
     }
     
@@ -494,12 +506,12 @@ int main( int i_argc, char *i_argv[] ) {
       }
     }
 
+    l_waveProp->setGhostOutflow();
     l_timestep = l_waveProp->computeMaxTimestep(l_cellSizeMeters);
     if(!std::isfinite(l_timestep)){
-      std::cerr << "there no longer is any valid fluid in the simulation! Stopping." << std::endl;
+      std::cerr << "  there no longer is any valid fluid in the simulation! Stopping." << std::endl;
       break;// NaN or Infinite timestep -> illegal -> stop simulation
     }
-    l_waveProp->setGhostOutflow();
     
     t_real l_scaling = l_timestep / l_cellSizeMeters;
     l_waveProp->timeStep(l_scaling);
@@ -527,7 +539,7 @@ int main( int i_argc, char *i_argv[] ) {
     l_file.close();
     
   } else {
-    if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_simulationTime, l_nOut, l_deflateLevel, l_netCdfPath)) return EXIT_FAILURE;
+    if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_simulationTime, l_deflateLevel, l_netCdfPath)) return EXIT_FAILURE;
   }
   
   // todo init files once, then only append the measurements
