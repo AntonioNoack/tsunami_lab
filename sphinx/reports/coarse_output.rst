@@ -78,7 +78,7 @@ I tried to save a checkpoint (which yes indeed, would have had a size of about 2
 
 Sometimes, I know I am pretty limited with my 32GB of memory, also the program just said "killed", and it just might have been killed, because it used too much memory.
 
-Visualization in ParaView wasn't easy either, because it seems like it loads the file into memory as a whole, no matter how large the file is. It could load only the layers, that it needs, or even better, render then while sweeping over the file. When the file was loaded, ParaView itself used 26GB of memory.
+Visualizing the checkpoint in ParaView wasn't easy either, because it seems like it loads the file into memory as a whole, no matter how large the file is. It could load only the layers, that it needs, or even better, render then while sweeping over the file. When the file was loaded, ParaView itself used 26GB of memory.
 Also, the result didn't show up in ParaView for some reason. Just the aspect ratio of the field, and the range values (when setting the range for the color mapping) were correct.
 
 .. figure:: w7_paraview.png
@@ -86,3 +86,5 @@ Also, the result didn't show up in ParaView for some reason. Just the aspect rat
 When looking at checkpoints on the 250m/cell simulation, everything is fine. Currently I suspect there is an issue within ParaView.
 
 .. figure:: w7_checkpoint_250x.png
+
+Visualization of the coarse output of the 50m/cell simulation worked fine :), there just isn't anything new.
