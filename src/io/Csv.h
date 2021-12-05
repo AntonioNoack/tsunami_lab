@@ -22,7 +22,6 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
-#include <optional>
 
 namespace tsunami_lab {
   namespace io {
