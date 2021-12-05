@@ -9,6 +9,7 @@
 // for use of M_PI
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <cmath>
 
 tsunami_lab::t_real tsunami_lab::setups::ArtificialTsunami2d::getHeight( t_real, t_real ) const {
   return +100;
