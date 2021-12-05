@@ -316,7 +316,7 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   auto l_type = sizeof(t_real) == 4 ? NC_FLOAT : NC_DOUBLE;
   
   int dims2[2] = { l_yDimId, l_xDimId };
-  int l_hVarId, l_bVarId, l_huVarId, l_hvVarId;
+  int l_hVarId, l_bVarId, l_huVarId, l_hvVarId = 0;
   
   check(nc_def_var(l_handle, "height",     l_type, 2, dims2, &l_hVarId));
   check(nc_def_var_deflate(l_handle, l_hVarId,  l_shuffle, l_deflate, l_deflateLevel));
