@@ -244,9 +244,9 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   for( t_idx l_iy = 0; l_iy < l_nCellsY + 2; l_iy++ ) {
     t_idx l_ceStart = l_iy * l_stride;
     t_idx l_ceEnd = l_ceStart + l_nCellsX + 2 - 1;
-	t_idx l_ceL = l_ceStart;
 	
 	#ifdef MEMORY_IS_SCARCE
+	t_idx l_ceL = l_ceStart;
 	t_real hOld [2];
 	t_real hNew [2];
 	t_real huOld[2];
