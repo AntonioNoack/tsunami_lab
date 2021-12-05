@@ -30,7 +30,7 @@ void tsunami_lab::io::Station::recordState( t_real i_time, t_real i_h, t_real i_
 
 void tsunami_lab::io::Station::write( bool i_withComment ) {
   
-  std::string l_fileName = "station_" + m_name + ".csv";
+  std::string l_fileName = m_name.find('/') == std::string::npos ? "station_" + m_name + ".csv" : m_name + ".csv";
   
   std::ofstream l_stream;
   l_stream.open( l_fileName );

@@ -107,7 +107,9 @@ TEST_CASE( "Test the NetCDF-reading functionality for a 2d field named z.", "[Ne
   for(int i=0;i<12;i++) REQUIRE(l_data[i] == i);
 }
 
-TEST_CASE( "Test sampling down an image for coarse output", "[NetCDF][downsample]" ) {
+// this test is no longer supported this way, because now we write directly to NetCDF;
+// we could read the result from a temporary file...
+/*TEST_CASE( "Test sampling down an image for coarse output", "[NetCDF][downsample]" ) {
   const t_idx l_sizeIn = 5, l_sizeOut = 2, l_step = 3;
   const t_real l_dataIn[25] = {
       5, 5, 5,  3, 4,
@@ -124,7 +126,7 @@ TEST_CASE( "Test sampling down an image for coarse output", "[NetCDF][downsample
   REQUIRE(l_dataOut[2] == 2);
   REQUIRE(l_dataOut[3] == 8);
   REQUIRE(l_dataOut[4] == 19);
-}
+}*/
 
 TEST_CASE( "Test checkpointing", "[NetCDF][Checkpointing]" ) {
   

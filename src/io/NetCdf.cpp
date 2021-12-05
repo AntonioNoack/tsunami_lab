@@ -38,23 +38,63 @@
   }\
 }
 
+#define check3(error) {\
+  l_err = error;\
+  if(l_err != NC_NOERR){\
+    std::cerr << "NetCDF-Error occurred: " << nc_strerror(l_err) << " (Code " << l_err << "), line " << __LINE__ << std::endl;\
+    nc_close(l_handle);\
+    return;\
+  }\
+}
+
+// functions for t_real
+#define put_vara(handle, varId, start, count, data)\
+  sizeof(t_real) == 4 ? nc_put_vara_float(handle, varId, start, count, (float*) data) : nc_put_vara_double(handle, varId, start, count, (double*) data)
+
+#define get_vara(handle, varId, start, count, data)\
+  sizeof(t_real) == 4 ? nc_get_vara_float(handle, varId, start, count, (float*) data) : nc_get_vara_double(handle, varId, start, count, (double*) data)
+
+#define put_var1(handle, varId, start, data)\
+  sizeof(t_real) == 4 ? nc_put_var1_float(handle, varId, start, (float*) data) : nc_put_var1_double(handle, varId, start, (double*) data)
+
+#define get_var1(handle, varId, start, data)\
+  sizeof(t_real) == 4 ? nc_get_var1_float(handle, varId, start, (float*) data) : nc_get_var1_double(handle, varId, start, (double*) data)
+
 #ifndef CEIL_DIV
 #define CEIL_DIV(a,div) (a+div-1)/(div)
 #endif
 
-void tsunami_lab::io::NetCDF::downsample( t_idx         i_sizeXIn,
-                                          t_idx         i_sizeYIn,
-                                          t_idx         i_strideIn,
-                                          t_real const* i_dataIn,
-                                          t_idx         i_sizeXOut,
-                                          t_idx         i_sizeYOut,
-                                          t_idx         i_strideOut,
-                                          t_real*       i_dataOut,
-                                          t_idx         i_step ){
+int tsunami_lab::io::NetCDF::storeRow( int l_handle,
+                                       int i_varId,
+                                       int i_timeIndex,
+                                       t_idx i_yOut,
+                                       t_idx i_sizeXOut,
+                                       t_real const* i_dataOut ){
+  if(i_timeIndex < 0){// no time axis present
+    size_t l_start[2] = { i_yOut, 0 };
+    size_t l_count[2] = { 1, i_sizeXOut };
+    return put_vara(l_handle, i_varId, l_start, l_count, i_dataOut);
+  } else {
+    size_t l_start[3] = { (size_t) i_timeIndex, i_yOut, 0 };
+    size_t l_count[3] = { 1, 1, i_sizeXOut };
+    return put_vara(l_handle, i_varId, l_start, l_count, i_dataOut);
+  }
+}
+
+int tsunami_lab::io::NetCDF::downsample( int l_handle,
+                                         int i_varId,
+                                         int i_timeIndex,
+                                         t_idx         i_sizeXIn,
+                                         t_idx         i_sizeYIn,
+                                         t_idx         i_strideIn,
+                                         t_real const* i_dataIn,
+                                         t_idx         i_sizeXOut,
+                                         t_idx         i_sizeYOut,
+                                         t_real*       i_dataOut,
+                                         t_idx         i_step ){
+  int l_err;
   if(i_step > 1){
-    #pragma omp parallel for
     for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
-      t_idx l_indexOut = l_yOut * i_strideOut;
       const t_idx l_yIn0 = l_yOut * i_step;
       const t_idx l_yIn1 = std::min(l_yIn0 + i_step, i_sizeYIn);
       for(t_idx l_xOut=0;l_xOut<i_sizeXOut;l_xOut++){
@@ -67,18 +107,19 @@ void tsunami_lab::io::NetCDF::downsample( t_idx         i_sizeXIn,
             l_sum += i_dataIn[l_indexIn++];
           }
         }
-        i_dataOut[l_indexOut++] = l_sum / (t_real)((l_xIn1-l_xIn0)*(l_yIn1-l_yIn0));
+        i_dataOut[l_xOut] = l_sum / (t_real)((l_xIn1-l_xIn0)*(l_yIn1-l_yIn0));
       }
+      l_err = storeRow(l_handle, i_varId, i_timeIndex, l_yOut, i_sizeXOut, i_dataOut);
+      if(l_err) return l_err;
     }
   } else {// just copy the stripes
-    t_idx l_copySize = i_sizeXOut * sizeof(t_real);
-    #pragma omp parallel for
     for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
       t_idx l_indexIn  = l_yOut * i_strideIn;
-      t_idx l_indexOut = l_yOut * i_strideOut;
-      memcpy(i_dataOut + l_indexOut, i_dataIn + l_indexIn, l_copySize);
+      l_err = storeRow(l_handle, i_varId, i_timeIndex, l_yOut, i_sizeXOut, i_dataIn + l_indexIn);
+      if(l_err) return l_err;
     }
   }
+  return EXIT_SUCCESS;
 }
 
 tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string i_fileName, t_idx &o_nx, t_idx &o_ny, t_real &o_cellSizeMeters, t_real &o_cflFactor, double &o_simulationTime, t_idx &o_timeStepIndex, std::vector<tsunami_lab::io::Station> &o_stations ){
@@ -139,19 +180,11 @@ tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string
   // read all vector values
   size_t l_startVec[2] = { 0, 0 };
   size_t l_countVec[2] = { o_ny, o_nx };// fastest dimensions are last
-  if(f){
-    l_err  = nc_get_vara_float( l_handle, l_hVarId,  l_startVec, l_countVec, (float*) l_h);
-    l_err |= nc_get_vara_float( l_handle, l_bVarId,  l_startVec, l_countVec, (float*) l_b);
-    l_err |= nc_get_vara_float( l_handle, l_huVarId, l_startVec, l_countVec, (float*) l_hu);
-    if(o_ny > 1) l_err |= nc_get_vara_float( l_handle, l_hvVarId, l_startVec, l_countVec, (float*) l_hv);
-  } else {
-    l_err  = nc_get_vara_double(l_handle, l_hVarId,  l_startVec, l_countVec, (double*) l_h);
-    l_err |= nc_get_vara_double(l_handle, l_bVarId,  l_startVec, l_countVec, (double*) l_b);
-    l_err |= nc_get_vara_double(l_handle, l_huVarId, l_startVec, l_countVec, (double*) l_hu);
-    if(o_ny > 1) l_err |= nc_get_vara_double(l_handle, l_hvVarId, l_startVec, l_countVec, (double*) l_hv);
-  }
-  
-  check2(l_err);
+  check2(get_vara(l_handle, l_hVarId,  l_startVec, l_countVec, l_h));
+  check2(get_vara(l_handle, l_bVarId,  l_startVec, l_countVec, l_b));
+  check2(get_vara(l_handle, l_huVarId, l_startVec, l_countVec, l_hu));
+  if(o_ny > 1)
+    check2(get_vara( l_handle, l_hvVarId, l_startVec, l_countVec, l_hv));
   
   // todo query stations:
   // todo query all variables starting with "station-", then read in their values
@@ -172,8 +205,7 @@ tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string
       // read in all station data
       size_t l_startVec0[1] = { 0 };
       size_t l_countVec0[1] = { l_dimILength };
-      if(f){ check2(nc_get_vara_float( l_handle, l_var, l_startVec0, l_countVec0, (float*)  l_stationData.data())); }
-      else { check2(nc_get_vara_double(l_handle, l_var, l_startVec0, l_countVec0, (double*) l_stationData.data())); }
+      check2(get_vara(l_handle, l_var, l_startVec0, l_countVec0, l_stationData.data()));
       
       t_real l_delayBetweenRecords = l_stationData[0];
       t_idx  l_x = (t_idx) l_stationData[1];
@@ -266,28 +298,14 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   
   check(nc_enddef(l_handle));
   
-  std::vector<t_real> l_dataWithoutStride(i_nx * i_ny);
-  
-  bool f = sizeof(t_real) == 4;
   t_idx l_stride = i_waveProp->getStride();
   
   // 2d-Variablen
-  downsample(i_nx, i_ny, l_stride, i_waveProp->getHeight(),      i_nx, i_ny, i_nx, l_dataWithoutStride.data(), 1);
-  if(f){check(nc_put_var_float( l_handle, l_hVarId, (float*)  l_dataWithoutStride.data()));}
-  else {check(nc_put_var_double(l_handle, l_hVarId, (double*) l_dataWithoutStride.data()));}
-  
-  downsample(i_nx, i_ny, l_stride, i_waveProp->getBathymetry(),  i_nx, i_ny, i_nx, l_dataWithoutStride.data(), 1);
-  if(f){check(nc_put_var_float( l_handle, l_bVarId, (float*)  l_dataWithoutStride.data()));}
-  else {check(nc_put_var_double(l_handle, l_bVarId, (double*) l_dataWithoutStride.data()));}
-  
-  downsample(i_nx, i_ny, l_stride, i_waveProp->getMomentumX(),   i_nx, i_ny, i_nx, l_dataWithoutStride.data(), 1);
-  if(f){check(nc_put_var_float( l_handle, l_huVarId, (float*)  l_dataWithoutStride.data()));}
-  else {check(nc_put_var_double(l_handle, l_huVarId, (double*) l_dataWithoutStride.data()));}
-  
+  check(downsample(l_handle,   l_hVarId,  -1, i_nx, i_ny, l_stride, i_waveProp->getHeight(),     i_nx, i_ny, nullptr, 1));
+  check(downsample(l_handle,   l_bVarId,  -1, i_nx, i_ny, l_stride, i_waveProp->getBathymetry(), i_nx, i_ny, nullptr, 1));
+  check(downsample(l_handle,   l_huVarId, -1, i_nx, i_ny, l_stride, i_waveProp->getMomentumX(),  i_nx, i_ny, nullptr, 1));
   if(i_waveProp->getMomentumY()){
-    downsample(i_nx, i_ny, l_stride, i_waveProp->getMomentumY(), i_nx, i_ny, i_nx, l_dataWithoutStride.data(), 1);
-    if(f){check(nc_put_var_float( l_handle, l_hvVarId, (float*)  l_dataWithoutStride.data()));}
-    else {check(nc_put_var_double(l_handle, l_hvVarId, (double*) l_dataWithoutStride.data()));}
+    check(downsample(l_handle, l_hvVarId, -1, i_nx, i_ny, l_stride, i_waveProp->getMomentumY(),  i_nx, i_ny, nullptr, 1));
   }
   
   // 0d-Variablen
@@ -295,13 +313,8 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   check(nc_put_var1_double(  l_handle, l_simTimeVarId, nullptr, (double*)        &i_simulationTime));
   check(nc_put_var1_longlong(l_handle, l_simIdxVarId,  nullptr, (long long int*) &i_timeStepIndex2));
   
-  if(f){
-    check(nc_put_var1_float( l_handle, l_cellSizeVarId,  nullptr, (float*)  &i_cellSizeMeters));
-    check(nc_put_var1_float( l_handle, l_cflFactorVarId, nullptr, (float*)  &i_cflFactor));
-  } else {
-    check(nc_put_var1_double(l_handle, l_cellSizeVarId,  nullptr, (double*) &i_cellSizeMeters));
-    check(nc_put_var1_double(l_handle, l_cflFactorVarId, nullptr, (double*) &i_cflFactor));
-  }
+  check(put_var1(l_handle, l_cellSizeVarId,  nullptr, &i_cellSizeMeters));
+  check(put_var1(l_handle, l_cflFactorVarId, nullptr, &i_cflFactor));
   
   // write stations as heterogenous arrays
   // (could be done with multiple variables per station, but I'm lazy for this one)
@@ -314,8 +327,7 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
     
     #define putValue(value)\
       l_value = (t_real) value;\
-      if(f){ check(nc_put_vara_float( l_handle, l_var, &l_index, &l_size, (float*)  &l_value)); }\
-      else { check(nc_put_vara_double(l_handle, l_var, &l_index, &l_size, (double*) &l_value)); }\
+      check(put_vara(l_handle, l_var, &l_index, &l_size, &l_value));\
       l_index++;\
     
     putValue(l_station.getDelayBetweenRecords());
@@ -394,7 +406,7 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
     check(nc_open(i_fileName.c_str(), NC_WRITE, &l_handle));
   }
   
-  std::vector<float> l_dataWithoutStride(l_nx * l_ny);
+  std::vector<float> l_dataWithoutStride(std::max(l_nx, l_ny));
   
   // todo units, other axis descriptions
   // define dimensions
@@ -488,49 +500,30 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
     
   }
   
-  size_t l_zero = i_timeStepIndex;// index for that dimension (mmh)
+  size_t l_timeStepIndex = i_timeStepIndex;// index for that dimension
   float l_floatTime = (float) i_time;// time may be a double
-  check(nc_put_var1_float(l_handle, l_tVarId, &l_zero, &l_floatTime));
+  check(nc_put_var1_float(l_handle, l_tVarId, &l_timeStepIndex, &l_floatTime));
   
-  size_t l_startVec[3] = { i_timeStepIndex, 0, 0 };
-  size_t l_countVec[3] = { 1, l_ny, l_nx };// required when working with infinite dimensions
-  
-  if(i_h){
-    downsample(i_nx, i_ny, i_stride, i_h, l_nx, l_ny, l_nx, l_dataWithoutStride.data(), i_step);
-    check(nc_put_vara_float(l_handle, l_heightId, l_startVec, l_countVec, l_dataWithoutStride.data()));
-  }
-  
-  if(i_hu){
-    downsample(i_nx, i_ny, i_stride, i_hu, l_nx, l_ny, l_nx, l_dataWithoutStride.data(), i_step);
-    check(nc_put_vara_float(l_handle, l_momentumXId, l_startVec, l_countVec, l_dataWithoutStride.data()));
-  }
-  
-  if(i_hv){
-    downsample(i_nx, i_ny, i_stride, i_hv, l_nx, l_ny, l_nx, l_dataWithoutStride.data(), i_step);
-    check(nc_put_vara_float(l_handle, l_momentumYId, l_startVec, l_countVec, l_dataWithoutStride.data()));
-  }
+  if(i_h){  check(downsample(l_handle, l_heightId,    i_timeStepIndex, i_nx, i_ny, i_stride, i_h,  l_nx, l_ny, l_dataWithoutStride.data(), i_step)); }
+  if(i_hu){ check(downsample(l_handle, l_momentumXId, i_timeStepIndex, i_nx, i_ny, i_stride, i_hu, l_nx, l_ny, l_dataWithoutStride.data(), i_step)); }
+  if(i_hv){ check(downsample(l_handle, l_momentumYId, i_timeStepIndex, i_nx, i_ny, i_stride, i_hv, l_nx, l_ny, l_dataWithoutStride.data(), i_step)); }
   
   if(l_isFirstFrame){
-    if(i_b){
-      downsample(i_nx, i_ny, i_stride, i_b, l_nx, l_ny, l_nx, l_dataWithoutStride.data(), i_step);
-      // there is only a single frame of bathymetry, so we can use var instead of vara
-      check(nc_put_var_float(l_handle, l_bathymetryId, l_dataWithoutStride.data()));
-    }
+    if(i_b){ check(downsample(l_handle, l_bathymetryId, -1, i_nx, i_ny, i_stride, i_b, l_nx, l_ny, l_dataWithoutStride.data(), i_step)); }
     if(i_setup){
       // this is sub-ideal, and would ideally require downsampling
       // however, for that we'd need to allocate a new, large buffer
       // or create a second downsample function
       t_real l_scaleX, l_scaleY;
       i_setup->getInitScale(l_scaleX, l_scaleY);
-      for(t_idx y=0,o=0,my=i_ny-i_step+1;y<my;y+=i_step){
-        t_real l_y = (y + (t_real) 0.5) * l_scaleY;
-        for(t_idx x=0,mx=i_nx-i_step+1;x<mx;x+=i_step){
-          t_real l_x = (x + (t_real) 0.5) * l_scaleX;
-          l_dataWithoutStride[o++] = i_setup->getDisplacement(l_x, l_y);
+      for(t_idx y=0;y<l_ny;y++){
+        t_real l_y = ((y * i_step) + (t_real) 0.5) * l_scaleY;
+        for(t_idx x=0;x<l_nx;x++){
+          t_real l_x = ((x * i_step) + (t_real) 0.5) * l_scaleX;
+          l_dataWithoutStride[x] = i_setup->getDisplacement(l_x, l_y);
         }
+        check(storeRow(l_handle, l_displacementId, -1, y, l_nx, l_dataWithoutStride.data()));
       }
-      // there is only a single frame of displacement, so we can use var instead of vara
-      check(nc_put_var_float(l_handle, l_displacementId, l_dataWithoutStride.data()));
     }
   }
   

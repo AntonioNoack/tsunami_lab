@@ -24,15 +24,25 @@ namespace tsunami_lab {
 
 class tsunami_lab::io::NetCDF {
   private:
-    static void downsample( t_idx         i_sizeInX,
-                            t_idx         i_sizeInY,
-                            t_idx         i_strideIn,
-                            t_real const* i_dataIn,
-                            t_idx         i_sizeOutX,
-                            t_idx         i_sizeOutY,
-                            t_idx         i_strideOut,
-                            t_real*       i_dataOut,
-                            t_idx         i_step );
+    
+    static int storeRow( int           i_handle,
+                         int           i_varId,
+                         int           i_timeIndex,
+                         t_idx         i_yOut,
+                         t_idx         i_sizeXOut,
+                         t_real const* i_dataOut );
+                          
+    static int downsample( int           i_handle,
+                           int           i_varId,
+                           int           i_timeIndex,
+						   t_idx         i_sizeInX,
+                           t_idx         i_sizeInY,
+                           t_idx         i_strideIn,
+                           t_real const* i_dataIn,
+                           t_idx         i_sizeOutX,
+                           t_idx         i_sizeOutY,
+                           t_real*       i_dataOut,
+                           t_idx         i_step );
   public:
     /**
      * Writes the data as a NetCDF file.
