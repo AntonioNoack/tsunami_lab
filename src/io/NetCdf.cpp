@@ -446,8 +446,9 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
   t_idx l_nx = CEIL_DIV(i_nx, i_step), l_ny = CEIL_DIV(i_ny, i_step);
   
   // dimension ids
-  int l_xDimId, l_yDimId, l_tDimId;
-  int l_heightId, l_momentumXId, l_momentumYId, l_bathymetryId, l_displacementId;
+  // inited for the sanitizer, which is too primitive for this function
+  int l_xDimId = 0, l_yDimId = 0, l_tDimId = 0;
+  int l_heightId = 0, l_momentumXId = 0, l_momentumYId = 0, l_bathymetryId = 0, l_displacementId = 0;
   int l_xVarId, l_yVarId; // values on x and y axes (e.g. 0 .. 50 x 0 .. 50)
   int l_tVarId;// time values in seconds
   
