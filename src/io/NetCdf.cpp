@@ -92,11 +92,15 @@ int tsunami_lab::io::NetCDF::downsample( int l_handle,
                                          t_idx         i_sizeYOut,
                                          t_real*       i_dataOut,
                                          t_idx         i_step ){
-  int l_err;
+  int l_err = 0;
   if(i_step > 1){
+    std::cout << "    writing " << i_sizeXIn << " x " << i_sizeYIn << " -> " << i_sizeXOut << " x " << i_sizeYOut << " with interpolation" << std::endl;
     for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
       const t_idx l_yIn0 = l_yOut * i_step;
       const t_idx l_yIn1 = std::min(l_yIn0 + i_step, i_sizeYIn);
+      // the outer loop cannot be parallelized that easily, because NetCDF may not be thread safe
+      // this inner loop, as small as it may seem, might be pretty large (e.g. 54k elements)
+      #pragma omp parallel for
       for(t_idx l_xOut=0;l_xOut<i_sizeXOut;l_xOut++){
         const t_idx l_xIn0 = l_xOut * i_step;
         const t_idx l_xIn1 = std::min(l_xIn0 + i_step, i_sizeXIn);
@@ -114,30 +118,33 @@ int tsunami_lab::io::NetCDF::downsample( int l_handle,
     }
   } else {// just copy the stripes
     if(i_strideIn == i_sizeXOut){// just a pure copy is required
-	  if(i_timeIndex < 0){// no time axis present
+      std::cout << "    writing " << i_sizeXOut << " x " << i_sizeYOut << " in one block" << std::endl;
+      if(i_timeIndex < 0){// no time axis present
         size_t l_start[2] = { 0, 0 };
         size_t l_count[2] = { i_sizeYOut, i_sizeXOut };
-        return put_vara(l_handle, i_varId, l_start, l_count, i_dataIn);
+        l_err = put_vara(l_handle, i_varId, l_start, l_count, i_dataIn);
       } else {
-		size_t l_start[3] = { (size_t) i_timeIndex, 0, 0 };
-		size_t l_count[3] = { 1, i_sizeYOut, i_sizeXOut };
-		return put_vara(l_handle, i_varId, l_start, l_count, i_dataIn);
-	  }
-	} else {
-	  if(i_timeIndex < 0){
-		size_t l_start[2] = { 0, 0 };
-		size_t l_count[2] = { i_sizeYOut, i_sizeXOut };
-		ptrdiff_t l_stride[2] = { 1, 1 };
-		ptrdiff_t l_map[2] = { (ptrdiff_t) i_strideIn, 1 };
-		return nc_put_varm_float(l_handle, i_varId, l_start, l_count, l_stride, l_map, i_dataIn);
-	  } else {
-		size_t l_start[3] = { (size_t) i_timeIndex, 0, 0 };
-		size_t l_count[3] = { 1, i_sizeYOut, i_sizeXOut };
-		ptrdiff_t l_stride[3] = { 1, 1, 1 };
-		ptrdiff_t l_map[3] = { 0, (ptrdiff_t) i_strideIn, 1 };
-		return nc_put_varm_float(l_handle, i_varId, l_start, l_count, l_stride, l_map, i_dataIn);
-	  }
-	}
+        size_t l_start[3] = { (size_t) i_timeIndex, 0, 0 };
+        size_t l_count[3] = { 1, i_sizeYOut, i_sizeXOut };
+        l_err = put_vara(l_handle, i_varId, l_start, l_count, i_dataIn);
+      }
+    } else {
+      std::cout << "    writing " << i_sizeXOut << " x " << i_sizeYOut << " in stripes" << std::endl;
+      if(i_timeIndex < 0){
+        size_t l_start[2] = { 0, 0 };
+        size_t l_count[2] = { i_sizeYOut, i_sizeXOut };
+        ptrdiff_t l_stride[2] = { 1, 1 };
+        ptrdiff_t l_map[2] = { (ptrdiff_t) i_strideIn, 1 };
+        l_err = nc_put_varm_float(l_handle, i_varId, l_start, l_count, l_stride, l_map, i_dataIn);
+      } else {
+        size_t l_start[3] = { (size_t) i_timeIndex, 0, 0 };
+        size_t l_count[3] = { 1, i_sizeYOut, i_sizeXOut };
+        ptrdiff_t l_stride[3] = { 1, 1, 1 };
+        ptrdiff_t l_map[3] = { 0, (ptrdiff_t) i_strideIn, 1 };
+        l_err = nc_put_varm_float(l_handle, i_varId, l_start, l_count, l_stride, l_map, i_dataIn);
+      }
+    }
+    // old code, that may be used for performance comparisons
     /*for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
       // std::cout << "writing " << l_yOut << "/" << i_sizeYOut << ", " << i_sizeXOut << " values" << std::endl;
       t_idx l_indexIn  = l_yOut * i_strideIn;
@@ -145,6 +152,7 @@ int tsunami_lab::io::NetCDF::downsample( int l_handle,
       if(l_err) return l_err;
     }*/
   }
+  std::cout << "    done writing chunk of memory" << std::endl;
   return EXIT_SUCCESS;
 }
 
@@ -265,7 +273,11 @@ tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string
 
 int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx, t_idx i_ny, t_real i_cellSizeMeters, t_real i_cflFactor, double i_simulationTime, t_idx i_timeStepIndex, std::vector<tsunami_lab::io::Station> &i_stations, tsunami_lab::patches::WavePropagation* i_waveProp ){
   
-  int l_deflateLevel = 5;
+  #ifdef MEMORY_IS_SCARCE
+  int l_deflateLevel = 0;
+  #else
+  int l_deflateLevel = 2;
+  #endif
   bool l_deflate = l_deflateLevel > 0;
   bool l_shuffle = l_deflate;
   
@@ -273,15 +285,15 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   size_t offset;
   
   if(i_ny > 1){
-	// 2d
-	i_nx += 2;
-	i_ny += 2;
-	offset = i_nx + 1;
+    // 2d
+    i_nx += 2;
+    i_ny += 2;
+    offset = i_nx + 1;
   } else {
-	// 1d
-	i_nx += 2;
-	i_ny = 1;
-	offset = 1;
+    // 1d
+    i_nx += 2;
+    i_ny = 1;
+    offset = 1;
   }
   
   int l_err, l_handle;
