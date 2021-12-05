@@ -10,8 +10,7 @@
 #include "WavePropagation.h"
 #include "../setups/Setup.h"
 
-#define MEMORY_IS_SPARSE
-#ifdef MEMORY_IS_SPARSE
+#ifdef MEMORY_IS_SCARCE
 #define CELLS_MAX 1
 #else
 #define CELLS_MAX 2

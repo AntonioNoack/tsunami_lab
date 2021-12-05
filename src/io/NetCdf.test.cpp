@@ -201,7 +201,9 @@ TEST_CASE( "Test checkpointing", "[NetCDF][Checkpointing]" ) {
   auto l_setup = tsunami_lab::io::NetCDF::loadCheckpoint( l_fileName, l_nx2, l_ny2, l_cellSizeMeters2,
 														  l_cflFactor2, l_simulationTime2, l_timeStepIndex2,
                                                           l_stations2 );
-														  
+  
+  l_nx2 -= 2;// for the ghost cells; it's 1d, so we don't need to adjust l_ny2
+  
   REQUIRE(l_nx2 == l_nx);
   REQUIRE(l_ny2 == l_ny);
   REQUIRE(l_cellSizeMeters2 == l_cellSizeMeters);

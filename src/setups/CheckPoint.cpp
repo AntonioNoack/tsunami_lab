@@ -11,9 +11,9 @@
 tsunami_lab::t_idx tsunami_lab::setups::CheckPoint::getIndex( t_real i_x, t_real i_y ) const {
 
   // calculate index in buffer, and clamp the coordinates to the defined range
-  // the ghost cells are copied anyways
-  t_idx l_indexX = std::min(std::max((t_idx) i_x, (t_idx) 0), m_sizeX-1);
-  t_idx l_indexY = std::min(std::max((t_idx) i_y, (t_idx) 0), m_sizeY-1);
+  // +1 for ghost cells
+  t_idx l_indexX = std::min(std::max((t_idx) i_x + 1, (t_idx) 0), m_sizeX-1);
+  t_idx l_indexY = std::min(std::max((t_idx) i_y + 1, (t_idx) 0), m_sizeY-1);
   
   return l_indexX + l_indexY * m_stride;
   

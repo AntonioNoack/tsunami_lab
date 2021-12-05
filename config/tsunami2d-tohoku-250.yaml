@@ -7,4 +7,4 @@ scale: 1
 outputFile: tohoku-250.nc
 outputStepSize: 24
 outputPeriod: 30
-checkpointPeriod: 20
+checkpointPeriod: 600

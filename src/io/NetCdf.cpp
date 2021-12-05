@@ -113,11 +113,37 @@ int tsunami_lab::io::NetCDF::downsample( int l_handle,
       if(l_err) return l_err;
     }
   } else {// just copy the stripes
-    for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
+    if(i_strideIn == i_sizeXOut){// just a pure copy is required
+	  if(i_timeIndex < 0){// no time axis present
+        size_t l_start[2] = { 0, 0 };
+        size_t l_count[2] = { i_sizeYOut, i_sizeXOut };
+        return put_vara(l_handle, i_varId, l_start, l_count, i_dataIn);
+      } else {
+		size_t l_start[3] = { (size_t) i_timeIndex, 0, 0 };
+		size_t l_count[3] = { 1, i_sizeYOut, i_sizeXOut };
+		return put_vara(l_handle, i_varId, l_start, l_count, i_dataIn);
+	  }
+	} else {
+	  if(i_timeIndex < 0){
+		size_t l_start[2] = { 0, 0 };
+		size_t l_count[2] = { i_sizeYOut, i_sizeXOut };
+		ptrdiff_t l_stride[2] = { 1, 1 };
+		ptrdiff_t l_map[2] = { (ptrdiff_t) i_strideIn, 1 };
+		return nc_put_varm_float(l_handle, i_varId, l_start, l_count, l_stride, l_map, i_dataIn);
+	  } else {
+		size_t l_start[3] = { (size_t) i_timeIndex, 0, 0 };
+		size_t l_count[3] = { 1, i_sizeYOut, i_sizeXOut };
+		ptrdiff_t l_stride[3] = { 1, 1, 1 };
+		ptrdiff_t l_map[3] = { 0, (ptrdiff_t) i_strideIn, 1 };
+		return nc_put_varm_float(l_handle, i_varId, l_start, l_count, l_stride, l_map, i_dataIn);
+	  }
+	}
+    /*for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
+      // std::cout << "writing " << l_yOut << "/" << i_sizeYOut << ", " << i_sizeXOut << " values" << std::endl;
       t_idx l_indexIn  = l_yOut * i_strideIn;
       l_err = storeRow(l_handle, i_varId, i_timeIndex, l_yOut, i_sizeXOut, i_dataIn + l_indexIn);
       if(l_err) return l_err;
-    }
+    }*/
   }
   return EXIT_SUCCESS;
 }
@@ -243,6 +269,21 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   bool l_deflate = l_deflateLevel > 0;
   bool l_shuffle = l_deflate;
   
+  // for the ghost cells
+  size_t offset;
+  
+  if(i_ny > 1){
+	// 2d
+	i_nx += 2;
+	i_ny += 2;
+	offset = i_nx + 1;
+  } else {
+	// 1d
+	i_nx += 2;
+	i_ny = 1;
+	offset = 1;
+  }
+  
   int l_err, l_handle;
   
   // if file exists, create tmp file
@@ -301,11 +342,11 @@ int tsunami_lab::io::NetCDF::storeCheckpoint( std::string i_fileName, t_idx i_nx
   t_idx l_stride = i_waveProp->getStride();
   
   // 2d-Variablen
-  check(downsample(l_handle,   l_hVarId,  -1, i_nx, i_ny, l_stride, i_waveProp->getHeight(),     i_nx, i_ny, nullptr, 1));
-  check(downsample(l_handle,   l_bVarId,  -1, i_nx, i_ny, l_stride, i_waveProp->getBathymetry(), i_nx, i_ny, nullptr, 1));
-  check(downsample(l_handle,   l_huVarId, -1, i_nx, i_ny, l_stride, i_waveProp->getMomentumX(),  i_nx, i_ny, nullptr, 1));
+  check(downsample(l_handle,   l_hVarId,  -1, i_nx, i_ny, l_stride, i_waveProp->getHeight()     - offset, i_nx, i_ny, nullptr, 1));
+  check(downsample(l_handle,   l_bVarId,  -1, i_nx, i_ny, l_stride, i_waveProp->getBathymetry() - offset, i_nx, i_ny, nullptr, 1));
+  check(downsample(l_handle,   l_huVarId, -1, i_nx, i_ny, l_stride, i_waveProp->getMomentumX()  - offset, i_nx, i_ny, nullptr, 1));
   if(i_waveProp->getMomentumY()){
-    check(downsample(l_handle, l_hvVarId, -1, i_nx, i_ny, l_stride, i_waveProp->getMomentumY(),  i_nx, i_ny, nullptr, 1));
+    check(downsample(l_handle, l_hvVarId, -1, i_nx, i_ny, l_stride, i_waveProp->getMomentumY()  - offset, i_nx, i_ny, nullptr, 1));
   }
   
   // 0d-Variablen

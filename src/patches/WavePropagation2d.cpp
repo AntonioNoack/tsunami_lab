@@ -217,7 +217,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   t_real* l_huOld = m_hu[m_step];
   t_real* l_hvOld = m_hv[m_step];
   
-  #ifndef MEMORY_IS_SPARSE
+  #ifndef MEMORY_IS_SCARCE
   t_real* l_hNew  = m_h[1];
   t_real* l_huNew = m_hu[1-m_step];
   t_real* l_hvNew = m_hv[1-m_step];
@@ -246,7 +246,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     t_idx l_ceEnd = l_ceStart + l_nCellsX + 2 - 1;
 	t_idx l_ceL = l_ceStart;
 	
-	#ifdef MEMORY_IS_SPARSE
+	#ifdef MEMORY_IS_SCARCE
 	t_real hOld [2];
 	t_real hNew [2];
 	t_real huOld[2];
@@ -283,7 +283,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
 	#endif
   }
 
-  #ifndef MEMORY_IS_SPARSE
+  #ifndef MEMORY_IS_SCARCE
   // update pointers to old and new data
   l_hOld = m_h[1];
   l_hNew = m_h[0];
@@ -297,7 +297,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   //////////////////////////////
   
   // iterate over edges and update with Riemann solutions
-  #ifdef MEMORY_IS_SPARSE
+  #ifdef MEMORY_IS_SCARCE
   #pragma omp parallel for
   for(t_idx l_ix = 0; l_ix < l_nCellsX + 2; l_ix++) {
 	t_real hOld[2];

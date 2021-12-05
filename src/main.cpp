@@ -134,7 +134,6 @@ int main( int i_argc, char *i_argv[] ) {
   bool l_printStationComments = readOrDefault(l_config, "printStationComments", true);
   
   if(readOrDefault(l_config, "readCheckpoints", true) && fileExists(l_checkpointPath)){
-    // todo how can we save stations in checkpoints? extra variables "station-'name'"
     // h, hu, hv, b
     l_scale = 1;
     // todo create setup
@@ -142,6 +141,9 @@ int main( int i_argc, char *i_argv[] ) {
     // only required for the first frame
     l_gridOffsetX = 0;
     l_gridOffsetY = 0;
+	// remove ghost cells
+	l_nx -= 2;
+	if(l_ny > 2) l_ny -= 2;
     if(l_setup == nullptr){
       std::cerr << "warn: checkpoint could not be loaded!, starting from zero!" << std::endl;
     } else {
