@@ -5,8 +5,8 @@ maxDuration: 3600
 maxSteps: 100000
 scale: 0.25
 outputFile: tohoku-1k.nc
-outputStepSize: 3
-outputPeriod: 9
+outputStepSize: 6
+outputPeriod: 30
 stations:
   - name: stations/Soma-1k
     gridX: -125000

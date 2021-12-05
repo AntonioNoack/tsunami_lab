@@ -269,7 +269,7 @@ int main( int i_argc, char *i_argv[] ) {
         t_real l_displacementHeight = readOrDefault<t_real>(l_config, "displacement", 10);
       
         // construct setup
-        l_setup = new tsunami_lab::setups::TsunamiEvent1d(l_bathymetry.data(), l_bathymetry.size(), 1/l_scale, l_displacementStart, l_displacementEnd, l_displacementHeight);
+        l_setup = new tsunami_lab::setups::TsunamiEvent1d(l_bathymetry.data(), l_bathymetry.size(), 1.0 / l_scale, l_displacementStart, l_displacementEnd, l_displacementHeight);
       
       } else {
         std::cerr << "missing parameter 'setupFile' for setup type Tsunami1d/GMTTrack" << std::endl;
@@ -322,9 +322,11 @@ int main( int i_argc, char *i_argv[] ) {
         return EXIT_FAILURE;
       }
       // create setup
+	  t_real l_scaleBath = 1.0 / (l_scale * l_scale);
+	  t_real l_scaleDisp = 1.0 / (l_scale * l_scale) * std::sqrt((l_nx2 * l_ny2)/(t_real)(l_nx * l_ny));
       l_setup = new tsunami_lab::setups::TsunamiEvent2d(
-        l_bathymetry.data(), l_nx, l_ny, l_nx, 1/(l_scale*l_scale),
-        l_displacement.data(), l_nx2, l_ny2, l_nx2, 1/(l_scale*l_scale) * std::sqrt((l_nx2*l_ny2)/(t_real)(l_nx*l_ny))
+        l_bathymetry.data(), l_nx, l_ny, l_nx, l_scaleBath,
+        l_displacement.data(), l_nx2, l_ny2, l_nx2, l_scaleDisp
       );
       // scale it up
       l_nx = (l_nx-2) * l_scale;// 2 for ghost cells; those cannot be scaled, and are re-added by the WavePropagation class
@@ -434,8 +436,13 @@ int main( int i_argc, char *i_argv[] ) {
   if(l_ny <= 1){
     l_waveProp = new tsunami_lab::patches::WavePropagation1d(l_nx, l_setup, l_scale);
   } else {
-    l_waveProp = new tsunami_lab::patches::WavePropagation2d(l_nx, l_ny, l_setup, l_scale, l_scale, l_cflFactor);
+    auto l_waveProp2 = new tsunami_lab::patches::WavePropagation2d(l_nx, l_ny, l_setup, l_scale, l_scale);
+	l_waveProp2->setCflFactor(l_cflFactor);
+	l_waveProp = l_waveProp2;
   }
+  
+  // no longer needed
+  // l_bathymetry.resize(0);
   
   // set up print control
   t_idx  l_nOut = 0;
@@ -496,6 +503,10 @@ int main( int i_argc, char *i_argv[] ) {
       } else {
         if(tsunami_lab::io::NetCDF::appendTimeframe( l_cellSizeMeters, l_nx, l_ny, l_gridOffsetX, l_gridOffsetY, l_outputStepSize, l_waveProp->getStride(), l_waveProp->getHeight(), l_waveProp->getMomentumX(), l_waveProp->getMomentumY(), l_waveProp->getBathymetry(), l_setup, l_simulationTime, l_deflateLevel, l_netCdfPath)) return EXIT_FAILURE;
       }
+	  
+	  // only needed for file export
+	  // and we may need the memory
+	  // l_displacement.resize(0);
       
     }
     

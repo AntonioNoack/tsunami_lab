@@ -24,8 +24,8 @@ class tsunami_lab::setups::TsunamiEvent2d: public Setup {
   private:
     
     t_real m_offset = 0, m_shoreCliffHeight = 20;
-    t_idx  m_scaleBath = 1, m_sizeXBath, m_sizeYBath, m_strideBath;
-    t_idx  m_scaleDisp = 1, m_sizeXDisp, m_sizeYDisp, m_strideDisp;
+    t_real m_scaleBath = 1; t_idx m_sizeXBath, m_sizeYBath, m_strideBath;
+    t_real m_scaleDisp = 1; t_idx m_sizeXDisp, m_sizeYDisp, m_strideDisp;
      
     t_real* m_bathymetry;
     t_real* m_displacement;
@@ -65,15 +65,15 @@ class tsunami_lab::setups::TsunamiEvent2d: public Setup {
                              t_idx   i_sizeXDisp,
                              t_idx   i_sizeYDisp,
                              t_idx   i_strideDisp,
-							 t_idx   i_scaleDisp) : 
+							 t_real  i_scaleDisp) : 
       m_offset(0.5),
       m_scaleBath(i_scaleBath), m_sizeXBath(i_sizeXBath), m_sizeYBath(i_sizeYBath), m_strideBath(i_strideBath),
       m_scaleDisp(i_scaleDisp), m_sizeXDisp(i_sizeXDisp), m_sizeYDisp(i_sizeYDisp), m_strideDisp(i_strideDisp),
       m_bathymetry(i_bathymetry),
       m_displacement(i_displacement) {
       
-      assert(i_sizeXBath > 0 && i_sizeYBath > 0);
-      assert(i_sizeXDisp > 0 && i_sizeYDisp > 0);
+      assert(i_sizeXBath > 1 && i_sizeYBath > 1 && i_scaleBath > 0);
+      assert(i_sizeXDisp > 1 && i_sizeYDisp > 1 && i_scaleDisp > 0);
       assert(i_bathymetry != nullptr);
       assert(i_displacement != nullptr);
       

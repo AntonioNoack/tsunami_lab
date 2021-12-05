@@ -3,8 +3,8 @@ bathymetryFile: ../tohoku_gebco08_ucsb3_250m_bath.nc
 displacementFile: ../tohoku_gebco08_ucsb3_250m_displ.nc
 maxDuration: 3600
 maxSteps: 100000
-scale: 1
-outputFile: tohoku-250.nc
-outputStepSize: 24
-outputPeriod: 30
-checkpointPeriod: 20
+scale: 5
+outputFile: tohoku-50.nc
+outputStepSize: 60
+outputPeriod: 15
+checkpointPeriod: 300

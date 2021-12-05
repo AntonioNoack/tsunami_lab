@@ -1,1 +1,1 @@
-scons
+scons -j 12

@@ -20,10 +20,12 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   m_nCellsY = i_nCellsY;
   
   m_nCells = (m_nCellsX+2) * (m_nCellsY+2);
+  
+  std::cout << "allocating " << m_nCells << " * (" << CELLS_MAX << " * 3 + 1)" << std::endl;
 
   // allocate memory including a single ghost cell on each side
   t_idx l_cellCount = m_nCells;
-  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
+  for( unsigned short l_st = 0; l_st < CELLS_MAX; l_st++ ) {
     m_h [l_st] = new t_real[l_cellCount];
     m_hu[l_st] = new t_real[l_cellCount];
     m_hv[l_st] = new t_real[l_cellCount];
@@ -32,7 +34,7 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   m_bathymetry = new t_real[l_cellCount];
 
   // init to zero
-  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
+  for( unsigned short l_st = 0; l_st < CELLS_MAX; l_st++ ) {
     #pragma omp parallel for
     for( t_idx l_ce = 0; l_ce < l_cellCount; l_ce++ ) {
       m_h [l_st][l_ce] = 0;
@@ -54,30 +56,11 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   m_nCellsY = i_nCellsY;
   
   m_nCells = (m_nCellsX+2) * (m_nCellsY+2);
+  
+  std::cout << "allocating " << m_nCells << " * " << (CELLS_MAX * 3 + 1) << " * " << sizeof(t_real) << "B = " << (m_nCells*(CELLS_MAX * 3 + 1)*sizeof(t_real)/1e9) << "GB" << std::endl;
 
   // allocate memory including a single ghost cell on all sides
-  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
-    m_h [l_st] = new t_real[m_nCells];
-    m_hu[l_st] = new t_real[m_nCells];
-    m_hv[l_st] = new t_real[m_nCells];
-  }
-  
-  m_bathymetry = new t_real[m_nCells];
-
-  initWithSetup( i_setup, i_scaleX, i_scaleY );
-}
-
-tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_idx i_nCellsY, tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY, t_real i_cflFactor ) {
-  
-  m_cflFactor = i_cflFactor;
-  
-  m_nCellsX = i_nCellsX;
-  m_nCellsY = i_nCellsY;
-  
-  m_nCells = (m_nCellsX+2) * (m_nCellsY+2);
-
-  // allocate memory including a single ghost cell on all sides
-  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
+  for( unsigned short l_st = 0; l_st < CELLS_MAX; l_st++ ) {
     m_h [l_st] = new t_real[m_nCells];
     m_hu[l_st] = new t_real[m_nCells];
     m_hv[l_st] = new t_real[m_nCells];
@@ -91,36 +74,35 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
 void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY ) {
   i_setup->setInitScale(i_scaleX, i_scaleY);
   
-  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
-    t_real* l_h  = m_h [l_st];
-    t_real* l_hu = m_hu[l_st];
-    t_real* l_hv = m_hv[l_st];
-    #pragma omp parallel for
-    for( t_idx l_iy = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
-      t_real l_y = (l_iy - (t_real) 0.5) * i_scaleY;// -0.5 = -1 (ghost zone) + 0.5 (center of cell)
-	  t_idx  l_i = l_iy * (m_nCellsX + 2);
-      for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
-        t_real l_x = (l_ix - (t_real) 0.5) * i_scaleX;
-        l_h [l_i] = i_setup->getHeight(    l_x, l_y );
-        l_hu[l_i] = i_setup->getMomentumX( l_x, l_y );
-        l_hv[l_i] = i_setup->getMomentumY( l_x, l_y );
-      }
+  t_real* l_h  = m_h [0];
+  t_real* l_hu = m_hu[0];
+  t_real* l_hv = m_hv[0];
+  #pragma omp parallel for
+  for( t_idx l_iy = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
+    t_real l_y = (l_iy - (t_real) 0.5) * i_scaleY;// -0.5 = -1 (ghost zone) + 0.5 (center of cell)
+	t_idx  l_i = l_iy * (m_nCellsX + 2);
+    for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
+      t_real l_x = (l_ix - (t_real) 0.5) * i_scaleX;
+      l_h [l_i] = i_setup->getHeight(    l_x, l_y );
+      l_hu[l_i] = i_setup->getMomentumX( l_x, l_y );
+      l_hv[l_i] = i_setup->getMomentumY( l_x, l_y );
     }
   }
   
+  t_real* l_bathymetry = m_bathymetry;
   #pragma omp parallel for
   for( t_idx l_iy = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
     t_real l_y = (l_iy - (t_real) 0.5) * i_scaleY;
     t_idx  l_i = l_iy * (m_nCellsX + 2);
     for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
       t_real l_x = (l_ix - (t_real) 0.5) * i_scaleX;
-      m_bathymetry[l_i] = i_setup->getBathymetry( l_x, l_y ) + i_setup->getDisplacement( l_x, l_y );
+      l_bathymetry[l_i] = i_setup->getBathymetry( l_x, l_y ) + i_setup->getDisplacement( l_x, l_y );
     }
   }
 }
 
 tsunami_lab::patches::WavePropagation2d::~WavePropagation2d() {
-  for( unsigned short l_st = 0; l_st < 2; l_st++ ) {
+  for( unsigned short l_st = 0; l_st < CELLS_MAX; l_st++ ) {
     delete[] m_h [l_st];
     delete[] m_hu[l_st];
     delete[] m_hv[l_st];
@@ -178,15 +160,65 @@ void tsunami_lab::patches::WavePropagation2d::internalUpdate( t_real i_scaling, 
   
 }
 
+void tsunami_lab::patches::WavePropagation2d::internalUpdate2( t_real i_scaling, t_idx l_ceL, t_idx l_ceR, 
+  t_real* l_hOld, t_real* l_huOld, t_real* l_hNew, t_real* l_huNew ) {
+  
+  t_real* l_b = m_bathymetry;
+  
+  t_real l_netUpdatesL[2];
+  t_real l_netUpdatesR[2];
+  
+  t_real l_hL  = l_hOld [0];
+  t_real l_hR  = l_hOld [1];
+  t_real l_huL = l_huOld[0];
+  t_real l_huR = l_huOld[1];
+  t_real l_bL  = l_b[l_ceL], l_bL0 = l_bL;
+  t_real l_bR  = l_b[l_ceR], l_bR0 = l_bR;
+  
+  if(l_bL > 0 || l_bR > 0){
+    // one cell is dry -> reflecting boundary condition
+    if(l_bR > 0){
+      // right cell is dry
+      l_hR = l_hL;
+      l_bR = l_bL;
+      l_huR = -l_huL;
+    } else {
+      // left cell is dry
+      l_hL = l_hR;
+      l_bL = l_bR;
+      l_huL = -l_huR;
+    }
+  }
+  
+  // compute net-updates
+  if(m_useFWaveSolver){
+    solvers::FWave::netUpdates( l_hL, l_hR, l_huL, l_huR, l_bL, l_bR, l_netUpdatesL, l_netUpdatesR );
+  } else {
+    solvers::Roe::netUpdates( l_hL, l_hR, l_huL, l_huR, l_netUpdatesL, l_netUpdatesR );
+  }
+  
+  // update the cells' quantities
+  if(l_bL0 <= 0){
+    l_hNew [0] -= i_scaling * l_netUpdatesL[0];
+    l_huNew[0] -= i_scaling * l_netUpdatesL[1];
+  } else l_huNew[0] = l_hNew[0] = 0;
+  
+  if(l_bR0 <= 0){
+    l_hNew [1] -= i_scaling * l_netUpdatesR[0];
+    l_huNew[1] -= i_scaling * l_netUpdatesR[1];
+  } else l_huNew[1] = l_hNew[1] = 0;
+  
+}
+
 void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   
   // pointers to old and new data
   t_real* l_hOld  = m_h[0];
-  t_real* l_hNew  = m_h[1];
-  
   t_real* l_huOld = m_hu[m_step];
   t_real* l_hvOld = m_hv[m_step];
   
+  #ifndef MEMORY_IS_SPARSE
+  t_real* l_hNew  = m_h[1];
   t_real* l_huNew = m_hu[1-m_step];
   t_real* l_hvNew = m_hv[1-m_step];
   
@@ -196,6 +228,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   memcpy(l_hNew,  l_hOld,  sizeof(t_real) * m_nCells);
   memcpy(l_huNew, l_huOld, sizeof(t_real) * m_nCells);
   memcpy(l_hvNew, l_hvOld, sizeof(t_real) * m_nCells);
+  #endif
   
   //////////////////////////////
   // half step in x direction //
@@ -211,27 +244,95 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   for( t_idx l_iy = 0; l_iy < l_nCellsY + 2; l_iy++ ) {
     t_idx l_ceStart = l_iy * l_stride;
     t_idx l_ceEnd = l_ceStart + l_nCellsX + 2 - 1;
+	t_idx l_ceL = l_ceStart;
+	
+	#ifdef MEMORY_IS_SPARSE
+	t_real hOld [2];
+	t_real hNew [2];
+	t_real huOld[2];
+	t_real huNew[2];
+	hOld [0] = hNew [0] = l_hOld [l_ceL];
+	huOld[0] = huNew[0] = l_huOld[l_ceL];
+	for(; l_ceL < l_ceEnd;){
+	  t_idx l_ceR = l_ceL + 1;
+	  // load next data
+	  hOld [1] = hNew [1] = l_hOld [l_ceR];
+	  huOld[1] = huNew[1] = l_huOld[l_ceR];
+	  // compute update
+	  internalUpdate2(i_scaling, l_ceL, l_ceR, hOld, huOld, hNew, huNew);
+	  // save results in original array
+	  l_hOld [l_ceL] = hNew [0];
+	  l_huOld[l_ceL] = huNew[0];
+	  // shift cells by 1
+	  hNew [0] = hNew [1];
+	  huNew[0] = huNew[1];
+	  hOld [0] = hOld [1];
+	  huOld[0] = huOld[1];
+	  l_ceL = l_ceR;
+	}
+	
+	// save last results in original array
+	l_hOld [l_ceL] = hNew [0];
+	l_huOld[l_ceL] = huNew[0];
+	
+	#else
 	#pragma omp simd
     for(t_idx l_ceL = l_ceStart; l_ceL < l_ceEnd; l_ceL++) {
       internalUpdate(i_scaling, l_ceL, l_ceL + 1, l_hOld, l_huOld, l_hNew, l_huNew);
     }
+	#endif
   }
-  
+
+  #ifndef MEMORY_IS_SPARSE
   // update pointers to old and new data
   l_hOld = m_h[1];
   l_hNew = m_h[0];
-
+  
   // init new cell quantities
   memcpy(l_hNew, l_hOld, sizeof(t_real) * m_nCells);
+  #endif
   
   //////////////////////////////
   // half step in y direction //
   //////////////////////////////
   
   // iterate over edges and update with Riemann solutions
-  t_idx l_iyEnd = l_nCellsY + 2 - 1;
+  #ifdef MEMORY_IS_SPARSE
   #pragma omp parallel for
-  for(t_idx l_iy = 0; l_iy < l_iyEnd; l_iy++) {
+  for(t_idx l_ix = 0; l_ix < l_nCellsX + 2; l_ix++) {
+	t_real hOld[2];
+	t_real hNew[2];
+	t_real huOld[2];
+	t_real huNew[2];
+	t_idx l_ceL = l_ix;
+	hOld[0]  = hNew [0] = l_hOld [l_ceL];
+	huOld[0] = huNew[0] = l_hvOld[l_ceL];
+    for(t_idx l_iy = 0; l_iy < l_nCellsY + 2 - 1; l_iy++) {
+	  t_idx l_ceR = l_ceL + l_stride;
+      // load next data
+	  hOld [1] = hNew [1] = l_hOld [l_ceR];
+	  huOld[1] = huNew[1] = l_hvOld[l_ceR];
+	  // compute update
+	  internalUpdate2(i_scaling, l_ceL, l_ceR, hOld, huOld, hNew, huNew);
+	  // save results in original array
+	  l_hOld [l_ceL] = hNew [0];
+	  l_hvOld[l_ceL] = huNew[0];
+	  // shift cells by 1
+	  hNew [0] = hNew [1];
+	  huNew[0] = huNew[1];
+	  hOld [0] = hOld [1];
+	  huOld[0] = huOld[1];
+	  l_ceL = l_ceR;
+    }
+	
+	// save last results in original array
+	l_hOld [l_ceL] = hNew [0];
+	l_hvOld[l_ceL] = huNew[0];
+	
+  }
+  #else
+  #pragma omp parallel for
+  for(t_idx l_iy = 0; l_iy < l_nCellsY + 2 - 1; l_iy++) {
     t_idx l_ceStart = l_iy * l_stride;
     t_idx l_ceEnd = l_ceStart + l_nCellsX + 2;
     #pragma omp simd
@@ -239,6 +340,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
       internalUpdate(i_scaling, l_ceL, l_ceL + l_stride, l_hOld, l_hvOld, l_hNew, l_hvNew);
     }
   }
+  #endif
   
 }
 

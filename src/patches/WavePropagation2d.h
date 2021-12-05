@@ -10,6 +10,13 @@
 #include "WavePropagation.h"
 #include "../setups/Setup.h"
 
+#define MEMORY_IS_SPARSE
+#ifdef MEMORY_IS_SPARSE
+#define CELLS_MAX 1
+#else
+#define CELLS_MAX 2
+#endif
+
 namespace tsunami_lab {
   namespace patches {
     class WavePropagation2d;
@@ -30,15 +37,15 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
     
     //! water heights for the current and next time step for all cells
     //! updated twice per step
-    t_real * m_h[2] = { nullptr, nullptr };
+    t_real * m_h[CELLS_MAX];
     
     //! momenta in x direction for the current and next time step for all cells
     //! updated once per step
-    t_real * m_hu[2] = { nullptr, nullptr };
+    t_real * m_hu[CELLS_MAX];
     
     //! momenta in y direction for the current and next time step for all cells
     //! updated once per step
-    t_real * m_hv[2] = { nullptr, nullptr };
+    t_real * m_hv[CELLS_MAX];
     
     //! bathymetry in meters for all cells
     //! currently only updated at the start of simulation
@@ -107,6 +114,14 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
      todo params
      **/
     void internalUpdate( t_real i_scaling, t_idx l_ceL, t_idx l_ceR, 
+        t_real* l_hOld, t_real* l_huOld, t_real* l_hNew, t_real* l_huNew );
+    
+    /**
+     * Internal function, which computes and applies the update from two neighbor cells to each other
+     
+     todo params
+     **/
+    void internalUpdate2( t_real i_scaling, t_idx l_ceL, t_idx l_ceR, 
         t_real* l_hOld, t_real* l_huOld, t_real* l_hNew, t_real* l_huNew );
     
     /**
@@ -217,6 +232,11 @@ class tsunami_lab::patches::WavePropagation2d: public WavePropagation {
                        t_real i_hv) {
       m_hv[m_step][(i_ix+1) + (i_iy+1) * (m_nCellsX+2)] = i_hv;
     };
+	
+	/** Sets the cfl factor */
+	void setCflFactor(t_real i_value){
+		m_cflFactor = i_value;
+	}
 };
 
 #endif
