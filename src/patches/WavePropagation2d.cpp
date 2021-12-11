@@ -293,7 +293,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     l_huOld[l_ceL] = huNew[0];
     
     #else
-    #pragma omp simd
+    // #pragma omp simd
     for(t_idx l_ceL = l_ceStart; l_ceL < l_ceEnd; l_ceL++) {
       internalUpdate(i_scaling, l_ceL, l_ceL + 1, l_hOld, l_huOld, l_hNew, l_huNew);
     }
@@ -355,7 +355,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   for(t_idx l_iy = 0; l_iy < l_nCellsY + 2 - 1; l_iy++) {
     t_idx l_ceStart = l_iy * l_stride;
     t_idx l_ceEnd = l_ceStart + l_nCellsX + 2;
-    #pragma omp simd
+    // #pragma omp simd
     for(t_idx l_ceL = l_ceStart; l_ceL < l_ceEnd; l_ceL++) {
       internalUpdate(i_scaling, l_ceL, l_ceL + l_stride, l_hOld, l_hvOld, l_hNew, l_hvNew);
     }
@@ -388,7 +388,7 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation2d::computeMaxTimestep(
   for( t_idx l_iy = 1; l_iy <= l_nCellsY; l_iy++){
     t_idx l_iStart = l_iy * l_stride + 1;// +1, because we start iterating at l_ix = 1
     t_idx l_iEnd = l_iStart + l_nCellsX + 1;
-    #pragma omp simd
+    // #pragma omp simd
     for(t_idx l_i = l_iStart; l_i < l_iEnd; l_i++){
       t_real l_height = l_h[l_i];
       t_real l_impulse = std::max(std::abs(l_hu[l_i]), std::abs(l_hv[l_i]));
