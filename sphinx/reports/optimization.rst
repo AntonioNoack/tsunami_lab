@@ -31,6 +31,12 @@ This brought the computation time for the 250m grid on 12 threads with my Ryzen 
 
 Then I tried whether the flag `-g` has an influence on the performance, but it didn't. My idea was that the compiler might inline less functions, when this flag is enabled.
 
+Scarce Memory Mode
+------------------
+
+The mode for when the memory is scarce iterates in the inner loop over the columns, while the data layout is row-major. This is pretty sub-optimal: for the 250m/cell grid, a single timestep needs 1.16s instead of 0.31s. The output additionally writes how much longer the y-part needed then the x-part: it's about 7.85 times slower than the iteration on the x-axis. Usually, they have the same performance. The total speedup/slow-down is roughly half of that, because the x-part uses cache-optimized accesses in both cases.
+
+Additional slow-down comes from the slow functions to write line by line with NetCDF.
 
 Comparing Runtimes
 ------------------
@@ -40,7 +46,20 @@ Comparing Runtimes
 
 6 Threads, 0.34s
 3 Threads, 0.60s
-1 Thread, 1.62s
+1 Thread,  1.62s
+
+Skylake processor with 18 cores, dual socket
+72 Threads, 0.28-0.31s/timestep
+36 Threads, 0.38-0.39s/timestep
+18 Threads, 0.47-0.48s/timestep
+ 8 Threads, 0.65-0.66s/timestep
+ 4 Threads, 1.14-1.15s/timestep
+ 2 Threads, 1.88-1.90s/timestep (0.97x slower for y)
+ 1 Thread,  2.17-2.21s/timestep (0.92x slower for y)
+
+Therefore, currently my six core processor is only a little slower than the 18 core skylake processor in when computing the 250m/cell grid.
+Part of the difference is probably the core clock: my processor runs on 3.4GHz while the Xeon processor runs on 2.3GHz.
+The Skylake node has the major advantage that it has much more memory (192GB instead of 32GB), and therefore can compute large tsunami simulations such as the 50m/cell grid with much higher speed.
 
 
 Installing Intel VTune
