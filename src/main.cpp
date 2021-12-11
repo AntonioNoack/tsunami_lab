@@ -23,6 +23,7 @@
 #include <chrono> // measuring performance
 #include <sys/stat.h> // check whether a file exists
 #include <omp.h> // for max threads
+#include <cmath> // std::sqrt
 
 #include <yaml-cpp/yaml.h>
 

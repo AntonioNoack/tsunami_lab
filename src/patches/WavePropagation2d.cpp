@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cassert> // assert
 #include <cstring> // memcpy
+#include <chrono> // measure time
 #include "WavePropagation2d.h"
 #include "../setups/Setup.h"
 #include "../solvers/FWave.h"
@@ -21,7 +22,10 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   
   m_nCells = (m_nCellsX+2) * (m_nCellsY+2);
   
-  std::cout << "allocating " << m_nCells << " * (" << CELLS_MAX << " * 3 + 1)" << std::endl;
+  size_t dataSize = m_nCells * (CELLS_MAX * 3 + 1) * sizeof(t_real);
+  if( dataSize > 100 * 1000 * 1000 ) {
+    std::cout << "allocating " << m_nCells << " * " << (CELLS_MAX * 3 + 1) << " * " << sizeof(t_real) << "B = " << (dataSize/1e9) << "GB" << std::endl;
+  }
 
   // allocate memory including a single ghost cell on each side
   t_idx l_cellCount = m_nCells;
@@ -57,7 +61,10 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   
   m_nCells = (m_nCellsX+2) * (m_nCellsY+2);
   
-  std::cout << "allocating " << m_nCells << " * " << (CELLS_MAX * 3 + 1) << " * " << sizeof(t_real) << "B = " << (m_nCells*(CELLS_MAX * 3 + 1)*sizeof(t_real)/1e9) << "GB" << std::endl;
+  size_t dataSize = m_nCells * (CELLS_MAX * 3 + 1) * sizeof(t_real);
+  if( dataSize > 100 * 1000 * 1000 ) {
+    std::cout << "allocating " << m_nCells << " * " << (CELLS_MAX * 3 + 1) << " * " << sizeof(t_real) << "B = " << (dataSize/1e9) << "GB" << std::endl;
+  }
 
   // allocate memory including a single ghost cell on all sides
   for( unsigned short l_st = 0; l_st < CELLS_MAX; l_st++ ) {
@@ -74,13 +81,17 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
 void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups::Setup* i_setup, t_real i_scaleX, t_real i_scaleY ) {
   i_setup->setInitScale(i_scaleX, i_scaleY);
   
+  using namespace std::chrono;
+  auto start = high_resolution_clock::now();
+  
   t_real* l_h  = m_h [0];
   t_real* l_hu = m_hu[0];
   t_real* l_hv = m_hv[0];
+  
   #pragma omp parallel for
   for( t_idx l_iy = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
     t_real l_y = (l_iy - (t_real) 0.5) * i_scaleY;// -0.5 = -1 (ghost zone) + 0.5 (center of cell)
-	t_idx  l_i = l_iy * (m_nCellsX + 2);
+    t_idx  l_i = l_iy * (m_nCellsX + 2);
     for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
       t_real l_x = (l_ix - (t_real) 0.5) * i_scaleX;
       l_h [l_i] = i_setup->getHeight(    l_x, l_y );
@@ -99,6 +110,10 @@ void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups
       l_bathymetry[l_i] = i_setup->getBathymetry( l_x, l_y ) + i_setup->getDisplacement( l_x, l_y );
     }
   }
+  
+  auto end = high_resolution_clock::now();
+  std::cout << "inited field in " << duration<double>(end-start).count() << "s" << std::endl;
+  
 }
 
 tsunami_lab::patches::WavePropagation2d::~WavePropagation2d() {
@@ -211,6 +226,9 @@ void tsunami_lab::patches::WavePropagation2d::internalUpdate2( t_real i_scaling,
 }
 
 void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
+
+  using namespace std::chrono;
+  auto start = high_resolution_clock::now();
   
   // pointers to old and new data
   t_real* l_hOld  = m_h[0];
@@ -227,7 +245,6 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   // init new cell quantities
   memcpy(l_hNew,  l_hOld,  sizeof(t_real) * m_nCells);
   memcpy(l_huNew, l_huOld, sizeof(t_real) * m_nCells);
-  memcpy(l_hvNew, l_hvOld, sizeof(t_real) * m_nCells);
   #endif
   
   //////////////////////////////
@@ -244,44 +261,46 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   for( t_idx l_iy = 0; l_iy < l_nCellsY + 2; l_iy++ ) {
     t_idx l_ceStart = l_iy * l_stride;
     t_idx l_ceEnd = l_ceStart + l_nCellsX + 2 - 1;
-	
-	#ifdef MEMORY_IS_SCARCE
-	t_idx l_ceL = l_ceStart;
-	t_real hOld [2];
-	t_real hNew [2];
-	t_real huOld[2];
-	t_real huNew[2];
-	hOld [0] = hNew [0] = l_hOld [l_ceL];
-	huOld[0] = huNew[0] = l_huOld[l_ceL];
-	for(; l_ceL < l_ceEnd;){
-	  t_idx l_ceR = l_ceL + 1;
-	  // load next data
-	  hOld [1] = hNew [1] = l_hOld [l_ceR];
-	  huOld[1] = huNew[1] = l_huOld[l_ceR];
-	  // compute update
-	  internalUpdate2(i_scaling, l_ceL, l_ceR, hOld, huOld, hNew, huNew);
-	  // save results in original array
-	  l_hOld [l_ceL] = hNew [0];
-	  l_huOld[l_ceL] = huNew[0];
-	  // shift cells by 1
-	  hNew [0] = hNew [1];
-	  huNew[0] = huNew[1];
-	  hOld [0] = hOld [1];
-	  huOld[0] = huOld[1];
-	  l_ceL = l_ceR;
-	}
-	
-	// save last results in original array
-	l_hOld [l_ceL] = hNew [0];
-	l_huOld[l_ceL] = huNew[0];
-	
-	#else
-	#pragma omp simd
+    
+    #ifdef MEMORY_IS_SCARCE
+    t_idx l_ceL = l_ceStart;
+    t_real hOld [2];
+    t_real hNew [2];
+    t_real huOld[2];
+    t_real huNew[2];
+    hOld [0] = hNew [0] = l_hOld [l_ceL];
+    huOld[0] = huNew[0] = l_huOld[l_ceL];
+    for(; l_ceL < l_ceEnd;){
+      t_idx l_ceR = l_ceL + 1;
+      // load next data
+      hOld [1] = hNew [1] = l_hOld [l_ceR];
+      huOld[1] = huNew[1] = l_huOld[l_ceR];
+      // compute update
+      internalUpdate2(i_scaling, l_ceL, l_ceR, hOld, huOld, hNew, huNew);
+      // save results in original array
+      l_hOld [l_ceL] = hNew [0];
+      l_huOld[l_ceL] = huNew[0];
+      // shift cells by 1
+      hNew [0] = hNew [1];
+      huNew[0] = huNew[1];
+      hOld [0] = hOld [1];
+      huOld[0] = huOld[1];
+      l_ceL = l_ceR;
+    }
+    
+    // save last results in original array
+    l_hOld [l_ceL] = hNew [0];
+    l_huOld[l_ceL] = huNew[0];
+    
+    #else
+    #pragma omp simd
     for(t_idx l_ceL = l_ceStart; l_ceL < l_ceEnd; l_ceL++) {
       internalUpdate(i_scaling, l_ceL, l_ceL + 1, l_hOld, l_huOld, l_hNew, l_huNew);
     }
-	#endif
+    #endif
   }
+  
+  auto middle = high_resolution_clock::now();
 
   #ifndef MEMORY_IS_SCARCE
   // update pointers to old and new data
@@ -289,7 +308,8 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   l_hNew = m_h[0];
   
   // init new cell quantities
-  memcpy(l_hNew, l_hOld, sizeof(t_real) * m_nCells);
+  memcpy(l_hNew,  l_hOld,  sizeof(t_real) * m_nCells);
+  memcpy(l_hvNew, l_hvOld, sizeof(t_real) * m_nCells);
   #endif
   
   //////////////////////////////
@@ -300,35 +320,35 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   #ifdef MEMORY_IS_SCARCE
   #pragma omp parallel for
   for(t_idx l_ix = 0; l_ix < l_nCellsX + 2; l_ix++) {
-	t_real hOld[2];
-	t_real hNew[2];
-	t_real huOld[2];
-	t_real huNew[2];
-	t_idx l_ceL = l_ix;
-	hOld[0]  = hNew [0] = l_hOld [l_ceL];
-	huOld[0] = huNew[0] = l_hvOld[l_ceL];
+    t_real hOld[2];
+    t_real hNew[2];
+    t_real huOld[2];
+    t_real huNew[2];
+    t_idx l_ceL = l_ix;
+    hOld[0]  = hNew [0] = l_hOld [l_ceL];
+    huOld[0] = huNew[0] = l_hvOld[l_ceL];
     for(t_idx l_iy = 0; l_iy < l_nCellsY + 2 - 1; l_iy++) {
-	  t_idx l_ceR = l_ceL + l_stride;
+      t_idx l_ceR = l_ceL + l_stride;
       // load next data
-	  hOld [1] = hNew [1] = l_hOld [l_ceR];
-	  huOld[1] = huNew[1] = l_hvOld[l_ceR];
-	  // compute update
-	  internalUpdate2(i_scaling, l_ceL, l_ceR, hOld, huOld, hNew, huNew);
-	  // save results in original array
-	  l_hOld [l_ceL] = hNew [0];
-	  l_hvOld[l_ceL] = huNew[0];
-	  // shift cells by 1
-	  hNew [0] = hNew [1];
-	  huNew[0] = huNew[1];
-	  hOld [0] = hOld [1];
-	  huOld[0] = huOld[1];
-	  l_ceL = l_ceR;
+      hOld [1] = hNew [1] = l_hOld [l_ceR];
+      huOld[1] = huNew[1] = l_hvOld[l_ceR];
+      // compute update
+      internalUpdate2(i_scaling, l_ceL, l_ceR, hOld, huOld, hNew, huNew);
+      // save results in original array
+      l_hOld [l_ceL] = hNew [0];
+      l_hvOld[l_ceL] = huNew[0];
+      // shift cells by 1
+      hNew [0] = hNew [1];
+      huNew[0] = huNew[1];
+      hOld [0] = hOld [1];
+      huOld[0] = huOld[1];
+      l_ceL = l_ceR;
     }
-	
-	// save last results in original array
-	l_hOld [l_ceL] = hNew [0];
-	l_hvOld[l_ceL] = huNew[0];
-	
+    
+    // save last results in original array
+    l_hOld [l_ceL] = hNew [0];
+    l_hvOld[l_ceL] = huNew[0];
+    
   }
   #else
   #pragma omp parallel for
@@ -342,9 +362,15 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   }
   #endif
   
+  auto end = high_resolution_clock::now();
+  std::cout << "      computed timeStep in " << duration<double>(end-start).count() << "s, " << duration<double>(end-middle).count()/duration<double>(middle-start).count() << "x slower for y" << std::endl;
+  
 }
 
 tsunami_lab::t_real tsunami_lab::patches::WavePropagation2d::computeMaxTimestep( t_real i_cellSizeMeters ){
+  
+  using namespace std::chrono;
+  auto start = high_resolution_clock::now();
   
   t_real* l_h  = m_h [0];
   t_real* l_hu = m_hu[0];
@@ -361,7 +387,7 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation2d::computeMaxTimestep(
   #pragma omp parallel for reduction(max: l_maxVelocity)
   for( t_idx l_iy = 1; l_iy <= l_nCellsY; l_iy++){
     t_idx l_iStart = l_iy * l_stride + 1;// +1, because we start iterating at l_ix = 1
-	t_idx l_iEnd = l_iStart + l_nCellsX + 1;
+    t_idx l_iEnd = l_iStart + l_nCellsX + 1;
     #pragma omp simd
     for(t_idx l_i = l_iStart; l_i < l_iEnd; l_i++){
       t_real l_height = l_h[l_i];
@@ -371,6 +397,9 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation2d::computeMaxTimestep(
       if(l_expectedVelocity > l_maxVelocity) l_maxVelocity = l_expectedVelocity;
     }
   }
+  
+  auto end = high_resolution_clock::now();
+  std::cout << "      computed max timestep in " << duration<double>(end-start).count() << "s" << std::endl;
   
   // 0.45 instead of 0.50, because after the first half step,
   // h/hv may have changed and be incorrect. So be save, and do a smaller step

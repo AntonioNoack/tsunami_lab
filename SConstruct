@@ -81,7 +81,7 @@ env.Append( CXXFLAGS = [ '-g' ] )
 env.Append( CXXFLAGS = [ '-Isubmodules/Catch2/single_include' ] )
 
 # use this, when you're close to the memory limit
-env.Append( CXXFLAGS = [ '-DMEMORY_IS_SCARCE' ] )
+# env.Append( CXXFLAGS = [ '-DMEMORY_IS_SCARCE' ] )
 
 # add netCDF & YamlCpp
 conf = Configure(env)
@@ -93,7 +93,7 @@ for lib in libs:
   if conf.CheckLib(lib):
     externalLibs.append(lib)
   else:
-    print(f'libary {lib} was not found!')
+    print('libary '+lib+' was not found!')
 
 env.Append( CXXFLAGS = [ '-fopenmp' ] )
 env.Append( LINKFLAGS = [ '-fopenmp' ] )

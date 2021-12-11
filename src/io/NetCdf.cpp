@@ -94,7 +94,7 @@ int tsunami_lab::io::NetCDF::downsample( int l_handle,
                                          t_idx         i_step ){
   int l_err = 0;
   if(i_step > 1){
-    std::cout << "    writing " << i_sizeXIn << " x " << i_sizeYIn << " -> " << i_sizeXOut << " x " << i_sizeYOut << " with interpolation" << std::endl;
+    std::cout << "    writing " << i_sizeXIn << " x " << i_sizeYIn << " -> " << i_sizeXOut << " x " << i_sizeYOut << " with averaging" << std::endl;
     for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
       const t_idx l_yIn0 = l_yOut * i_step;
       const t_idx l_yIn1 = std::min(l_yIn0 + i_step, i_sizeYIn);

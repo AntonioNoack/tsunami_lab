@@ -56,7 +56,7 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
                                               t_real o_netUpdateR[2] ) {
   
   // check if there is (valid) water at all
-  if(i_hL + i_hR > 0.0 && i_hL >= 0 && i_hR >= 0){
+  if(i_hL + i_hR > 0.0 && i_hL >= 0.0 && i_hR >= 0.0){
     
     t_real l_roeHeight = 0.5 * (i_hL + i_hR);
     
@@ -76,13 +76,9 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
     t_real l_lambda1 = l_roeVelocity - l_gravityTerm;
     t_real l_lambda2 = l_roeVelocity + l_gravityTerm;
     
-    t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, 1, m/s, m/s]
-    inverse2x2(l_r12);// [1, s/m, 1, s/m]
-    
-    // Bathymetrie nach
-    // https://github.com/breuera/swe_solvers/blob/master/src/solver/FWave.hpp,
-    // da bloßes Einfügen in den alten Code zu nicht-passenden-Einheiten und damit zu
-    // Fehlern geführt hätte.
+    // t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, 1, m/s, m/s]
+	// t_real l_inverseDet = 1.0 / (l_lambda2 - l_lambda1);
+	t_real l_inverseDet = 0.5 / l_gravityTerm;
     
     t_real l_deltaField[2] = {
       i_huR - i_huL, // [m*m/s]
@@ -90,11 +86,10 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
       + (t_real) 0.5 * m_gravity * ( i_hR * i_hR - i_hL * i_hL ) // [m/s² * m²]
       + l_bathymetryTerm // = 0.5 * gravity * (bR - bL) * (hL + hR)
     };
-    t_real l_alpha[2];
-    transform2x2(l_r12, l_deltaField, l_alpha);// [1, s/m, 1, s/m] * [m²/s, m³/s²] = [m²/s]
     
-    t_real l_delta_hL = l_alpha[0];
-    t_real l_delta_hR = l_alpha[1];
+	// inverse matrix * delta field
+    t_real l_delta_hL = ( l_lambda2 * l_deltaField[0] - l_deltaField[1]) * l_inverseDet;
+    t_real l_delta_hR = (-l_lambda1 * l_deltaField[0] + l_deltaField[1]) * l_inverseDet;
     
     // Z_p = wave1/2 = alpha_p * r_p + bathymetryTerm
     t_real l_delta_huL = l_delta_hL * l_lambda1;
