@@ -92,7 +92,7 @@ int main( int i_argc, char *i_argv[] ) {
   
   char* l_configPath = i_argv[1];
   if(!fileExists(l_configPath)){
-    std::cerr << "Configuration file could not be found!" << std::endl;
+    std::cerr << "Configuration file '" << l_configPath << "' could not be found!" << std::endl;
     return EXIT_FAILURE;
   }
   

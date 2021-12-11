@@ -24,3 +24,30 @@ Optimizations
 -------------
 
 To evaluate optimizations, I first added timers to the functions initWithSetup(), timeStep() and computeMaxTimestep()
+
+
+
+
+
+Comparing Runtimes
+------------------
+12 Threads, Ryzen 5 2600, 250m/cell Tohoku: 0.33s/timestep, with VTune
+0.33s without VTune as well
+
+1 Thread, 1.74s
+
+
+Installing Intel VTune
+----------------------
+
+I wanted to use VTune without the massive latency from ssh.
+To install it, I followed `a tutorial to install intel-basekit <https://www.intel.com/content/www/us/en/develop/documentation/installation-guide-for-intel-oneapi-toolkits-linux/top/installation/install-using-package-managers/apt.html>`_. I added their key and then installed `intel-oneapi-vtune`, because I only wanted VTune (1.5GB), not their other stuff (15GB total). Unfortunately, the installation does not add their exectutable to the path automatically. I found the executable in `/opt/intel/oneapi/vtune/2022.0.0/bin64`.
+
+.. figure:: w8_vtune_installed.png
+
+VTune might need other packages (though they usually are installed automatically), but currently it says that it does not know my processor. It's a Ryzen 5 2600, so not a new one, just not an Intel one :/.
+
+.. figure:: w8_vtune_unknown_cpu.png
+
+Their constant tutorial-tries are pretty annoying.
+

@@ -94,8 +94,9 @@ int tsunami_lab::io::NetCDF::downsample( int l_handle,
                                          t_idx         i_step ){
   int l_err = 0;
   if(i_step > 1){
-    std::cout << "    writing " << i_sizeXIn << " x " << i_sizeYIn << " -> " << i_sizeXOut << " x " << i_sizeYOut << " with averaging" << std::endl;
-    for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
+#ifdef MEMORY_IS_SCARCE
+    std::cout << "    writing " << i_sizeXIn << " x " << i_sizeYIn << " -> " << i_sizeXOut << " x " << i_sizeYOut << " with averaging, line by line" << std::endl;
+	for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
       const t_idx l_yIn0 = l_yOut * i_step;
       const t_idx l_yIn1 = std::min(l_yIn0 + i_step, i_sizeYIn);
       // the outer loop cannot be parallelized that easily, because NetCDF may not be thread safe
@@ -116,6 +117,36 @@ int tsunami_lab::io::NetCDF::downsample( int l_handle,
       l_err = storeRow(l_handle, i_varId, i_timeIndex, l_yOut, i_sizeXOut, i_dataOut);
       if(l_err) return l_err;
     }
+#else
+    std::cout << "    writing " << i_sizeXIn << " x " << i_sizeYIn << " -> " << i_sizeXOut << " x " << i_sizeYOut << " with averaging, in one block" << std::endl;
+    #pragma omp parallel for
+    for(t_idx l_yOut=0;l_yOut<i_sizeYOut;l_yOut++){
+      const t_idx l_yIn0 = l_yOut * i_step;
+      const t_idx l_yIn1 = std::min(l_yIn0 + i_step, i_sizeYIn);
+	  t_idx l_iOut = l_yOut * i_sizeXOut;
+      for(t_idx l_xOut=0;l_xOut<i_sizeXOut;l_xOut++){
+        const t_idx l_xIn0 = l_xOut * i_step;
+        const t_idx l_xIn1 = std::min(l_xIn0 + i_step, i_sizeXIn);
+        t_real l_sum = 0;
+        for(t_idx l_yIn=l_yIn0;l_yIn<l_yIn1;l_yIn++){
+          t_idx l_indexIn = l_xIn0 + l_yIn * i_strideIn;
+          for(t_idx l_xIn=l_xIn0;l_xIn<l_xIn1;l_xIn++){
+            l_sum += i_dataIn[l_indexIn++];
+          }
+        }
+        i_dataOut[l_iOut++] = l_sum / (t_real)((l_xIn1-l_xIn0)*(l_yIn1-l_yIn0));
+      }
+    }
+    if(i_timeIndex < 0){// no time axis present
+      size_t l_start[2] = { 0, 0 };
+      size_t l_count[2] = { i_sizeYOut, i_sizeXOut };
+      l_err = put_vara(l_handle, i_varId, l_start, l_count, i_dataOut);
+    } else {
+      size_t l_start[3] = { (size_t) i_timeIndex, 0, 0 };
+      size_t l_count[3] = { 1, i_sizeYOut, i_sizeXOut };
+      l_err = put_vara(l_handle, i_varId, l_start, l_count, i_dataOut);
+    }
+#endif
   } else {// just copy the stripes
     if(i_strideIn == i_sizeXOut){// just a pure copy is required
       std::cout << "    writing " << i_sizeXOut << " x " << i_sizeYOut << " in one block" << std::endl;
@@ -153,7 +184,7 @@ int tsunami_lab::io::NetCDF::downsample( int l_handle,
     }*/
   }
   std::cout << "    done writing chunk of memory" << std::endl;
-  return EXIT_SUCCESS;
+  return l_err;
 }
 
 tsunami_lab::setups::Setup* tsunami_lab::io::NetCDF::loadCheckpoint( std::string i_fileName, t_idx &o_nx, t_idx &o_ny, t_real &o_cellSizeMeters, t_real &o_cflFactor, double &o_simulationTime, t_idx &o_timeStepIndex, std::vector<tsunami_lab::io::Station> &o_stations ){
@@ -460,8 +491,12 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
     check(nc_open(i_fileName.c_str(), NC_WRITE, &l_handle));
   }
   
+#ifdef MEMORY_IS_SCARCE
   std::vector<float> l_dataWithoutStride(std::max(l_nx, l_ny));
-  
+#else
+  std::vector<float> l_dataWithoutStride(l_nx * l_ny);
+#endif
+
   // todo units, other axis descriptions
   // define dimensions
   if(l_isFirstFrame){
@@ -570,14 +605,33 @@ int tsunami_lab::io::NetCDF::appendTimeframe( t_real                       i_cel
       // or create a second downsample function
       t_real l_scaleX, l_scaleY;
       i_setup->getInitScale(l_scaleX, l_scaleY);
+#ifdef MEMORY_IS_SCARCE
+      std::cout << "writing displacement, line by line" << std::endl;
       for(t_idx y=0;y<l_ny;y++){
         t_real l_y = ((y * i_step) + (t_real) 0.5) * l_scaleY;
+        #pragma omp parallel for
         for(t_idx x=0;x<l_nx;x++){
           t_real l_x = ((x * i_step) + (t_real) 0.5) * l_scaleX;
           l_dataWithoutStride[x] = i_setup->getDisplacement(l_x, l_y);
         }
         check(storeRow(l_handle, l_displacementId, -1, y, l_nx, l_dataWithoutStride.data()));
       }
+#else
+      std::cout << "writing displacement, in one block" << std::endl;
+      #pragma omp parallel for
+      for(t_idx y=0;y<l_ny;y++){
+        t_real l_y = ((y * i_step) + (t_real) 0.5) * l_scaleY;
+        t_real l_i = y * l_nx;
+        for(t_idx x=0;x<l_nx;x++){
+          t_real l_x = ((x * i_step) + (t_real) 0.5) * l_scaleX;
+          l_dataWithoutStride[l_i++] = i_setup->getDisplacement(l_x, l_y);
+        }
+      }
+      size_t start[2] = { 0, 0 };
+      size_t count[2] = { l_ny, l_nx };
+      check(put_vara(l_handle, l_displacementId, start, count, l_dataWithoutStride.data()));
+#endif
+      std::cout << "wrote displacement" << std::endl;
     }
   }
   
