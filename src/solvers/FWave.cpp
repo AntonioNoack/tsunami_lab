@@ -54,73 +54,94 @@ void tsunami_lab::solvers::FWave::netUpdates( t_real i_hL,
                                               t_real i_bR,
                                               t_real o_netUpdateL[2],
                                               t_real o_netUpdateR[2] ) {
+    
+  t_real l_roeHeight = 0.5 * (i_hL + i_hR);
+    
+  // sqrt is quite expensive, so reuse it
+  t_real l_sqrtHLeft = sqrt(i_hL);
+  t_real l_sqrtHRight = sqrt(i_hR);
   
-  // check if there is (valid) water at all
-  if(i_hL + i_hR > 0.0 && i_hL >= 0.0 && i_hR >= 0.0){
+  t_real l_gravity = m_gravity;
     
-    t_real l_roeHeight = 0.5 * (i_hL + i_hR);
+  // velocities
+  // tests, because if one side was empty, we would create NaN otherwise
+  t_real l_uL = i_huL / i_hL;
+  t_real l_uR = i_huR / i_hR;
+  t_real l_roeVelocity = (l_uL * l_sqrtHLeft + l_uR * l_sqrtHRight) / (l_sqrtHLeft + l_sqrtHRight);// velcity mixed by sqrt(h)
+  t_real l_gravityTerm = sqrt(l_gravity * l_roeHeight);
+  t_real l_bathymetryTerm = l_gravity * (i_bR - i_bL) * l_roeHeight;// [m/s²*m²]
     
-    // sqrt is quite expensive, so reuse it
-    t_real l_sqrtHLeft = sqrt(i_hL);
-    t_real l_sqrtHRight = sqrt(i_hR);
+  // wave speeds
+  t_real l_lambda1 = l_roeVelocity - l_gravityTerm;
+  t_real l_lambda2 = l_roeVelocity + l_gravityTerm;
+
+#define USE_INLINE_MATRIX
+#ifdef USE_INLINE_MATRIX
+  
+  // t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, 1, m/s, m/s]
+  // t_real l_inverseDet = 1.0 / (l_lambda2 - l_lambda1);
+  t_real l_inverseDet = 0.5 / l_gravityTerm;
     
-    // velocities
-    // tests, because if one side was empty, we would create NaN otherwise
-    t_real l_uL = i_hL ? i_huL / i_hL : 0.0;
-    t_real l_uR = i_hR ? i_huR / i_hR : 0.0;
-    t_real l_roeVelocity = (l_uL * l_sqrtHLeft + l_uR * l_sqrtHRight) / (l_sqrtHLeft + l_sqrtHRight);// velcity mixed by sqrt(h)
-    t_real l_gravityTerm = sqrt(m_gravity * l_roeHeight);
-    t_real l_bathymetryTerm = m_gravity * (i_bR - i_bL) * l_roeHeight;// [m/s²*m²]
+  t_real l_deltaField[2] = {
+    i_huR - i_huL, // [m*m/s]
+    i_huR * l_uR - i_huL * l_uL // [m*m/s * m/s]
+    + (t_real) 0.5 * l_gravity * ( i_hR * i_hR - i_hL * i_hL ) // [m/s² * m²]
+    + l_bathymetryTerm // = 0.5 * gravity * (bR - bL) * (hL + hR)
+  };
     
-    // wave speeds
-    t_real l_lambda1 = l_roeVelocity - l_gravityTerm;
-    t_real l_lambda2 = l_roeVelocity + l_gravityTerm;
+  // inverse matrix * delta field
+  t_real l_delta_hL = ( l_lambda2 * l_deltaField[0] - l_deltaField[1]) * l_inverseDet;
+  t_real l_delta_hR = (-l_lambda1 * l_deltaField[0] + l_deltaField[1]) * l_inverseDet;
+
+#else
+  
+  t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, 1, m/s, m/s]
+  inverse2x2(l_r12);// [1, s/m, 1, s/m]
     
-    // t_real l_r12[2][2] = { { 1.0, 1.0 }, { l_lambda1, l_lambda2 } };// [1, 1, m/s, m/s]
-	// t_real l_inverseDet = 1.0 / (l_lambda2 - l_lambda1);
-	t_real l_inverseDet = 0.5 / l_gravityTerm;
+  // Bathymetrie nach
+  // https://github.com/breuera/swe_solvers/blob/master/src/solver/FWave.hpp,
+  // da bloßes Einfügen in den alten Code zu nicht-passenden-Einheiten und damit zu
+  // Fehlern geführt hätte.
     
-    t_real l_deltaField[2] = {
-      i_huR - i_huL, // [m*m/s]
-      i_huR * l_uR - i_huL * l_uL // [m*m/s * m/s]
-      + (t_real) 0.5 * m_gravity * ( i_hR * i_hR - i_hL * i_hL ) // [m/s² * m²]
-      + l_bathymetryTerm // = 0.5 * gravity * (bR - bL) * (hL + hR)
-    };
+  t_real l_deltaField[2] = {
+    i_huR - i_huL, // [m*m/s]
+    i_huR * l_uR - i_huL * l_uL // [m*m/s * m/s]
+    + (t_real) 0.5 * m_gravity * ( i_hR * i_hR - i_hL * i_hL ) // [m/s² * m²]
+    + l_bathymetryTerm // = 0.5 * gravity * (bR - bL) * (hL + hR)
+  };
+  t_real l_alpha[2];
+  transform2x2(l_r12, l_deltaField, l_alpha);// [1, s/m, 1, s/m] * [m²/s, m³/s²] = [m²/s]
     
-	// inverse matrix * delta field
-    t_real l_delta_hL = ( l_lambda2 * l_deltaField[0] - l_deltaField[1]) * l_inverseDet;
-    t_real l_delta_hR = (-l_lambda1 * l_deltaField[0] + l_deltaField[1]) * l_inverseDet;
+  t_real l_delta_hL = l_alpha[0];
+  t_real l_delta_hR = l_alpha[1];
+
+#endif
     
-    // Z_p = wave1/2 = alpha_p * r_p + bathymetryTerm
-    t_real l_delta_huL = l_delta_hL * l_lambda1;
-    t_real l_delta_huR = l_delta_hR * l_lambda2;
+  // Z_p = wave1/2 = alpha_p * r_p + bathymetryTerm
+  t_real l_delta_huL = l_delta_hL * l_lambda1;
+  t_real l_delta_huR = l_delta_hR * l_lambda2;
     
-    if(l_lambda1 < 0){// first wave, typically first branch is used
-      // to the left
-      o_netUpdateL[0] = l_delta_hL;
-      o_netUpdateL[1] = l_delta_huL;
-      o_netUpdateR[0] = o_netUpdateR[1] = 0;
-    } else {
-      // to the right
-      o_netUpdateR[0] = l_delta_hL;
-      o_netUpdateR[1] = l_delta_huL;
-      o_netUpdateL[0] = o_netUpdateL[1] = 0;
-    }
-    
-    // In the super-sonic case, both waves can have the same direction.
-    // Therefore we need to use "+=" instead of "=".
-    if(l_lambda2 < 0){// second wave, typically second branch is used
-      // to the left
-      o_netUpdateL[0] += l_delta_hR;
-      o_netUpdateL[1] += l_delta_huR;
-    } else {
-      // to the right
-      o_netUpdateR[0] += l_delta_hR;
-      o_netUpdateR[1] += l_delta_huR;
-    }
-    
+  if(l_lambda1 < 0){// first wave, typically first branch is used
+    // to the left
+    o_netUpdateL[0] = l_delta_hL;
+    o_netUpdateL[1] = l_delta_huL;
+    o_netUpdateR[0] = o_netUpdateR[1] = 0;
   } else {
-    // else there is no water -> no update required
-    o_netUpdateL[0] = o_netUpdateL[1] = o_netUpdateR[0] = o_netUpdateR[1] = 0;
+    // to the right
+    o_netUpdateR[0] = l_delta_hL;
+    o_netUpdateR[1] = l_delta_huL;
+    o_netUpdateL[0] = o_netUpdateL[1] = 0;
+  }
+    
+  // In the super-sonic case, both waves can have the same direction.
+  // Therefore we need to use "+=" instead of "=".
+  if(l_lambda2 < 0){// second wave, typically second branch is used
+    // to the left
+    o_netUpdateL[0] += l_delta_hR;
+    o_netUpdateL[1] += l_delta_huR;
+  } else {
+    // to the right
+    o_netUpdateR[0] += l_delta_hR;
+    o_netUpdateR[1] += l_delta_huR;
   }
 }

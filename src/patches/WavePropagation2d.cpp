@@ -23,7 +23,7 @@ tsunami_lab::patches::WavePropagation2d::WavePropagation2d( t_idx i_nCellsX, t_i
   m_nCells = (m_nCellsX+2) * (m_nCellsY+2);
   
   size_t dataSize = m_nCells * (CELLS_MAX * 3 + 1) * sizeof(t_real);
-  if( dataSize > 100 * 1000 * 1000 ) {
+  if( dataSize > 1e8 ) {
     std::cout << "allocating " << m_nCells << " * " << (CELLS_MAX * 3 + 1) << " * " << sizeof(t_real) << "B = " << (dataSize/1e9) << "GB" << std::endl;
   }
 
@@ -88,11 +88,14 @@ void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups
   t_real* l_hu = m_hu[0];
   t_real* l_hv = m_hv[0];
   
+  t_idx l_nCellsX = m_nCellsX;
+  t_idx l_nCellsY = m_nCellsY;
+  
   #pragma omp parallel for
-  for( t_idx l_iy = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
+  for( t_idx l_iy = 0; l_iy < l_nCellsY + 2; l_iy++ ) {
     t_real l_y = (l_iy - (t_real) 0.5) * i_scaleY;// -0.5 = -1 (ghost zone) + 0.5 (center of cell)
-    t_idx  l_i = l_iy * (m_nCellsX + 2);
-    for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
+    t_idx  l_i = l_iy * (l_nCellsX + 2);
+    for( t_idx l_ix = 0; l_ix < l_nCellsX + 2; l_ix++, l_i++ ) {
       t_real l_x = (l_ix - (t_real) 0.5) * i_scaleX;
       l_h [l_i] = i_setup->getHeight(    l_x, l_y );
       l_hu[l_i] = i_setup->getMomentumX( l_x, l_y );
@@ -102,17 +105,17 @@ void tsunami_lab::patches::WavePropagation2d::initWithSetup( tsunami_lab::setups
   
   t_real* l_bathymetry = m_bathymetry;
   #pragma omp parallel for
-  for( t_idx l_iy = 0; l_iy < m_nCellsY + 2; l_iy++ ) {
+  for( t_idx l_iy = 0; l_iy < l_nCellsY + 2; l_iy++ ) {
     t_real l_y = (l_iy - (t_real) 0.5) * i_scaleY;
-    t_idx  l_i = l_iy * (m_nCellsX + 2);
-    for( t_idx l_ix = 0; l_ix < m_nCellsX + 2; l_ix++, l_i++ ) {
+    t_idx  l_i = l_iy * (l_nCellsX + 2);
+    for( t_idx l_ix = 0; l_ix < l_nCellsX + 2; l_ix++, l_i++ ) {
       t_real l_x = (l_ix - (t_real) 0.5) * i_scaleX;
       l_bathymetry[l_i] = i_setup->getBathymetry( l_x, l_y ) + i_setup->getDisplacement( l_x, l_y );
     }
   }
   
   auto end = high_resolution_clock::now();
-  std::cout << "inited field in " << duration<double>(end-start).count() << "s" << std::endl;
+  if(l_nCellsX * l_nCellsY > 1e5) std::cout << "inited field of size " << l_nCellsX << " x " << l_nCellsY << " in " << duration<double>(end-start).count() << "s" << std::endl;
   
 }
 
@@ -156,11 +159,11 @@ void tsunami_lab::patches::WavePropagation2d::internalUpdate( t_real i_scaling, 
   }
   
   // compute net-updates
-  if(m_useFWaveSolver){
+#ifndef USE_ROE_SOLVER
     solvers::FWave::netUpdates( l_hL, l_hR, l_huL, l_huR, l_bL, l_bR, l_netUpdatesL, l_netUpdatesR );
-  } else {
+#else
     solvers::Roe::netUpdates( l_hL, l_hR, l_huL, l_huR, l_netUpdatesL, l_netUpdatesR );
-  }
+#endif
   
   // update the cells' quantities
   if(l_bL0 <= 0){
@@ -206,11 +209,11 @@ void tsunami_lab::patches::WavePropagation2d::internalUpdate2( t_real i_scaling,
   }
   
   // compute net-updates
-  if(m_useFWaveSolver){
+#ifndef USE_ROE_SOLVER
     solvers::FWave::netUpdates( l_hL, l_hR, l_huL, l_huR, l_bL, l_bR, l_netUpdatesL, l_netUpdatesR );
-  } else {
+#else
     solvers::Roe::netUpdates( l_hL, l_hR, l_huL, l_huR, l_netUpdatesL, l_netUpdatesR );
-  }
+#endif
   
   // update the cells' quantities
   if(l_bL0 <= 0){
@@ -363,7 +366,7 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   #endif
   
   auto end = high_resolution_clock::now();
-  std::cout << "      computed timeStep in " << duration<double>(end-start).count() << "s, " << duration<double>(end-middle).count()/duration<double>(middle-start).count() << "x slower for y" << std::endl;
+  if(l_nCellsX * l_nCellsY > 1e5) std::cout << "      computed timeStep in " << duration<double>(end-start).count() << "s, " << duration<double>(end-middle).count()/duration<double>(middle-start).count() << "x slower for y" << std::endl;
   
 }
 
@@ -399,7 +402,7 @@ tsunami_lab::t_real tsunami_lab::patches::WavePropagation2d::computeMaxTimestep(
   }
   
   auto end = high_resolution_clock::now();
-  std::cout << "      computed max timestep in " << duration<double>(end-start).count() << "s" << std::endl;
+  if(l_nCellsX * l_nCellsY > 1e5) std::cout << "      computed max timestep in " << duration<double>(end-start).count() << "s" << std::endl;
   
   // 0.45 instead of 0.50, because after the first half step,
   // h/hv may have changed and be incorrect. So be save, and do a smaller step

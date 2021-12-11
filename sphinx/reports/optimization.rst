@@ -23,18 +23,24 @@ All existing tests passed.
 Optimizations
 -------------
 
-To evaluate optimizations, I first added timers to the functions initWithSetup(), timeStep() and computeMaxTimestep()
+To evaluate optimizations, I first added timers to the functions initWithSetup(), timeStep() and computeMaxTimestep().
 
+Then I inlined the matrix multiplication, assumed the water height to be positive, and made the solver be decidable via preprocessor definition instead of a class member variable.
 
+This brought the computation time for the 250m grid on 12 threads with my Ryzen 5 2600 from down 0.33s/timestep to 0.31s/timestep (~6% improvement).
 
+Then I tried whether the flag `-g` has an influence on the performance, but it didn't. My idea was that the compiler might inline less functions, when this flag is enabled.
 
 
 Comparing Runtimes
 ------------------
-12 Threads, Ryzen 5 2600, 250m/cell Tohoku: 0.33s/timestep, with VTune
-0.33s without VTune as well
 
-1 Thread, 1.74s
+12 Threads, Ryzen 5 2600, 250m/cell Tohoku: 0.33s/timestep, with VTune
+0.31s without VTune as well
+
+6 Threads, 0.34s
+3 Threads, 0.60s
+1 Thread, 1.62s
 
 
 Installing Intel VTune
@@ -50,4 +56,10 @@ VTune might need other packages (though they usually are installed automatically
 .. figure:: w8_vtune_unknown_cpu.png
 
 Their constant tutorial-tries are pretty annoying.
+
+Is FWave::netUpdates inlined/vectorized?
+----------------------------------------
+
+FWave::netUpdates appears normally in the Top-down Tree view, and when looking at the disassembled code of the function in VTune, it doesn't seem to be vectorized either. This is understandable, because the function has a lot of branches currently.
+
 

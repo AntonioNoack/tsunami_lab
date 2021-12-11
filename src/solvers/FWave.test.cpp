@@ -64,13 +64,13 @@ TEST_CASE( "Test when nothing is changing.", "[FWave-netUpdate-Standing]" ) {
   t_real l_impulse = 4.0;
   // if our model included friction, the impulse afterwards would be slightly less (transfered into the rock below the sea, and a tiny bit into the air)
   
-  t_real l_deltaLeft[2];
+  t_real l_deltaLeft [2];
   t_real l_deltaRight[2];
   
   tsunami_lab::solvers::FWave::netUpdates(l_height, l_height, l_impulse, l_impulse, l_deltaLeft, l_deltaRight);
   
-  REQUIRE( l_deltaLeft[0] == Approx(0.0) );
-  REQUIRE( l_deltaLeft[1] == Approx(0.0) );
+  REQUIRE( l_deltaLeft [0] == Approx(0.0) );
+  REQUIRE( l_deltaLeft [1] == Approx(0.0) );
   REQUIRE( l_deltaRight[0] == Approx(0.0) );
   REQUIRE( l_deltaRight[1] == Approx(0.0) );
   
@@ -78,9 +78,9 @@ TEST_CASE( "Test when nothing is changing.", "[FWave-netUpdate-Standing]" ) {
 
 TEST_CASE( "Test breaking dam.", "[FWave-netUpdate-breakingDam]" ) {
   
-  t_real l_hL = 10.0;
-  t_real l_hR =  0.0;
-  t_real l_uL =  1.0;
+  t_real l_hL = 10.00;
+  t_real l_hR =  1e-9;
+  t_real l_uL =  1.00;
   
   t_real l_huL = l_hL * l_uL;
   
