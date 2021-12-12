@@ -68,8 +68,9 @@ Part of the difference is probably the core clock: my processor runs on 3.4GHz w
 The Skylake node has the major advantage that it has much more memory (192GB instead of 32GB), and therefore can compute large tsunami simulations such as the 50m/cell grid with much higher speed.
 
 
-GNU Compiler vs GCC
--------------------
+GNU Compiler vs Intel Compiler
+------------------------------
+
 For the comparison between compilers, I tested on 36 Threads.
 Sadly, the SCons didn't find the path to ipcp itself, so I had to use long commands.
 Additionally, GCC 10.0.2 uses a confusing path: `/cluster/spack/opt/spack/linux-centos7-broadwell/gcc-8.1.0/gcc-10.2.0-ru4xdhhkxnma5i727b7njtnjoh6kff3s/bin/g++`. I compiled with -O3 and with -march=skylake-avx512.
