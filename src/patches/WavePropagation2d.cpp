@@ -304,6 +304,10 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     
     #else
     // #pragma omp simd
+    // ignore vector dependency for intel compiler
+	#ifdef __INTEL_COMPILER
+	  #pragma ivdep
+	#endif
     for(t_idx l_ceL = l_ceStart; l_ceL < l_ceEnd; l_ceL++) {
       internalUpdate(i_scaling, l_ceL, l_ceL + 1, l_hOld, l_huOld, l_hNew, l_huNew);
     }
@@ -372,6 +376,10 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
     t_idx l_ceStart = l_iy * l_stride;
     t_idx l_ceEnd = l_ceStart + l_nCellsX + 2;
     // #pragma omp simd
+	// ignore vector dependency, pragma for intel compiler
+    #ifdef __INTEL_COMPILER
+	  #pragma ivdep
+	#endif
     for(t_idx l_ceL = l_ceStart; l_ceL < l_ceEnd; l_ceL++) {
       internalUpdate(i_scaling, l_ceL, l_ceL + l_stride, l_hOld, l_hvOld, l_hNew, l_hvNew);
     }
