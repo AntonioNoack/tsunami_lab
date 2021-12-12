@@ -43,8 +43,18 @@ if vars.UnknownVariables():
   print( "build configuration corrupted, don't know what to do with: " + str(vars.UnknownVariables().keys()) )
   exit(1)
 
+system_env = os.environ
+
 # create environment
-env = Environment( variables = vars )
+env = Environment(variables = vars)
+conf = Configure(env)
+
+useIntelCompiler = 'CXX' in system_env.keys() and system_env['CXX'].endswith('icpc')
+isYamlCppInstalled = conf.CheckLib('yaml-cpp')
+
+if 'CXX' in system_env.keys():
+  print('found CXX override' + system_env['CXX'])
+  env['CXX'] = system_env['CXX']
 
 # generate help message
 Help( vars.GenerateHelpText( env ) )
@@ -53,8 +63,12 @@ Help( vars.GenerateHelpText( env ) )
 env.Append( CXXFLAGS = [ '-std=c++11',
                          '-Wall',
                          '-Wextra',
-                         '-Wpedantic',
                          '-Werror' ] )
+
+# flag, which is not supported for Intel compiler
+if not useIntelCompiler:
+  env.Append( CXXFLAGS = ['-Wpedantic'] )
+
 
 # set optimization mode
 if 'debug' in env['mode']:
@@ -80,11 +94,14 @@ env.Append( CXXFLAGS = [ '-g' ] )
 # add Catch2
 env.Append( CXXFLAGS = [ '-Isubmodules/Catch2/single_include' ] )
 
+# add YamlCpp
+if not isYamlCppInstalled:
+  env.Append( CXXFLAGS = [ '-Isubmodules/YamlCpp2/include' ])
+
 # use this, when you're close to the memory limit
 # env.Append( CXXFLAGS = [ '-DMEMORY_IS_SCARCE' ] )
 
 # add netCDF & YamlCpp
-conf = Configure(env)
 externalLibs = []
 # packages: netcdf-bin, libnetcdf-dev
 # the task says, that zlib and hdf5 are required as packages, but SCons tells me it cannot find them, but builds fine anyways
@@ -99,21 +116,20 @@ env.Append( CXXFLAGS = [ '-fopenmp' ] )
 env.Append( LINKFLAGS = [ '-fopenmp' ] )
 
 # get source files
-VariantDir( variant_dir = 'build/src', src_dir     = 'src' )
+VariantDir( variant_dir = 'build/src', src_dir = 'src' )
 
 env.sources = []
 env.tests = []
 env.tsunami1d = []
 
-#src_file_path = inspect.getfile(lambda: None)
-#yamlcpp_src = os.path.dirname(src_file_path) + "/submodules/YamlCpp2/src"
-#for file in os.listdir(yamlcpp_src):
-#  src_file = yamlcpp_src + "/" + file
-#  if os.path.isfile(src_file):
-#    if src_file.endswith(".cpp"):
-#      env.sources.append(src_file)
-#  else:
-#    pass
+if not isYamlCppInstalled:
+  src_file_path = inspect.getfile(lambda: None)
+  yamlcpp_src = os.path.dirname(src_file_path) + "/submodules/YamlCpp2/src"
+  for file in os.listdir(yamlcpp_src):
+    src_file = yamlcpp_src + "/" + file
+    if os.path.isfile(src_file):
+      if src_file.endswith(".cpp"):
+        env.sources.append(src_file)
 
 Export('env')
 SConscript( 'build/src/SConscript' )

@@ -462,7 +462,7 @@ int main( int i_argc, char *i_argv[] ) {
   auto l_checkpointingTime0 = l_performanceTimeDebug0;
   
   // iterate over time
-  t_idx l_lastOutputIndex = -1;
+  t_idx l_lastOutputIndex = 0;
   t_idx l_timeStepIndexPerf = l_timeStepIndex;
   for(; l_timeStepIndex < l_maxTimesteps && l_simulationTime < l_maxDuration; l_timeStepIndex++ ){
     
