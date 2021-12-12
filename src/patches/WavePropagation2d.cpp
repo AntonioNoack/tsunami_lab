@@ -246,8 +246,15 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   m_step = !m_step;
 
   // init new cell quantities
-  memcpy(l_hNew,  l_hOld,  sizeof(t_real) * m_nCells);
-  memcpy(l_huNew, l_huOld, sizeof(t_real) * m_nCells);
+  t_idx l_nCells = m_nCells;
+  #pragma omp parallel for
+  for(t_idx i=0;i<l_nCells;i++){
+    l_hNew[i] = l_hOld[i];
+  }
+  #pragma omp parallel for
+  for(t_idx i=0;i<l_nCells;i++){
+    l_huNew[i] = l_huOld[i];
+  }
   #endif
   
   //////////////////////////////
@@ -311,8 +318,14 @@ void tsunami_lab::patches::WavePropagation2d::timeStep( t_real i_scaling ) {
   l_hNew = m_h[0];
   
   // init new cell quantities
-  memcpy(l_hNew,  l_hOld,  sizeof(t_real) * m_nCells);
-  memcpy(l_hvNew, l_hvOld, sizeof(t_real) * m_nCells);
+  #pragma omp parallel for
+  for(t_idx i=0;i<l_nCells;i++){
+    l_hNew[i] = l_hOld[i];
+  }
+  #pragma omp parallel for
+  for(t_idx i=0;i<l_nCells;i++){
+    l_hvNew[i] = l_hvOld[i];
+  }
   #endif
   
   //////////////////////////////
