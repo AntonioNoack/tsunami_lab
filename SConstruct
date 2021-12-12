@@ -52,6 +52,12 @@ conf = Configure(env)
 useIntelCompiler = 'CXX' in system_env.keys() and system_env['CXX'].endswith('icpc')
 isYamlCppInstalled = conf.CheckLib('yaml-cpp')
 
+if 'AVX512' in system_env.keys():
+  env.Append(CXXFLAGS = [ '-march=skylake-avx512' ])
+
+if 'FAST' in system_env.keys():
+  env.Append(CXXFLAGS = [ '-Ofast' ])
+
 if 'CXX' in system_env.keys():
   print('found CXX override' + system_env['CXX'])
   env['CXX'] = system_env['CXX']
@@ -89,14 +95,14 @@ if 'san' in  env['mode']:
                             '-fsanitize=address',
                             '-fsanitize=undefined' ] )
 
-env.Append( CXXFLAGS = [ '-g' ] )
+env.Append(CXXFLAGS = [ '-g' ])
 
 # add Catch2
-env.Append( CXXFLAGS = [ '-Isubmodules/Catch2/single_include' ] )
+env.Append(CXXFLAGS = [ '-Isubmodules/Catch2/single_include' ])
 
 # add YamlCpp
 if not isYamlCppInstalled:
-  env.Append( CXXFLAGS = [ '-Isubmodules/YamlCpp2/include' ])
+  env.Append(CXXFLAGS = [ '-Isubmodules/YamlCpp2/include' ])
 
 # use this, when you're close to the memory limit
 # env.Append( CXXFLAGS = [ '-DMEMORY_IS_SCARCE' ] )

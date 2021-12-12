@@ -11,6 +11,7 @@ Welcome to Tsunami Simulation's documentation!
   reports/large_data_io.rst
   reports/tsunami_simulations.rst
   reports/coarse_output.rst
+  reports/optimization.rst
   :maxdepth: 2
   :caption: Contents:
 
