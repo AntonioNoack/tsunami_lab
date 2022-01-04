@@ -82,12 +82,12 @@ IntelOMP reported that it placed Threads 0-17 on socket 0, thread 0, then 18-35 
 36-53 on socket 0, thread 1 and the rest on socket 1, thread 1. This is a bit unexpected.
 Additionally, the cores were called "0"-"11","16"-"27", which is a little confusing.
 
-.. figure: w9_pinning_compact.png
+.. figure:: w9_pinning_compact.png
 
 Then scatter was tested. The performance was a little worse, approx. 0.065s/timestep.
 Somehow, the mapping looks the same:
 
-.. figure: w9_pinning_scatter.png
+.. figure:: w9_pinning_scatter.png
 
 I wanted to get another thread-assignment, so I specified granularity=fine in hope it would fix it, but the runtime and placement was the same as previously.
 granularity=thread didn't change anything either.
