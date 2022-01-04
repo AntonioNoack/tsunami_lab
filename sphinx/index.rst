@@ -12,6 +12,7 @@ Welcome to Tsunami Simulation's documentation!
   reports/tsunami_simulations.rst
   reports/coarse_output.rst
   reports/optimization.rst
+  reports/parallelisation.rst
   :maxdepth: 2
   :caption: Contents:
 

@@ -77,6 +77,8 @@ Additionally, GCC 10.0.2 uses a confusing path: `/cluster/spack/opt/spack/linux-
 
 The Intel compiler gave out the following warnings: "Inlining inhibited by limit max-size" and "Inlining inhibited by limit max-total-size".
 
+"max" means how long the program needed to compute the maximum timestep.
+
 | GCC 10.0.2, with AVX 512: 0.334s/timestep, 0.0082s/max
 | Intel 19.1.2.254, with AVX 512: 0.312s/timestep, 0.0076s/max
 | GCC 9.3.0, with AVX 512: 0.334s/timestep, 0.0082s/max
