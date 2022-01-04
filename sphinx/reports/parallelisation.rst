@@ -29,8 +29,8 @@ For the runtimes, I averaged over a few timesteps.
     - 0.400s
     - 4.208
   * - 16
-    - 0.370s
-    - 4.549
+    - 0.205s
+    - 8.210
   * - 18
     - 0.167s
     - 10.08
